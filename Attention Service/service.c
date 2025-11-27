@@ -201,7 +201,7 @@ int update_hostfile(void) {
 
 	//Read old hostfile into new hostfile
 	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_old)) {
-		printf("%s", buffer);
+		fprintf_s(hfp_new, "%s", buffer);
 	}
 
 

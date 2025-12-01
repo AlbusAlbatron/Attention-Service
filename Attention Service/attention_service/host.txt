@@ -70,3 +70,12 @@
 0.0.0.0	spynet2.microsoft.com
 0.0.0.0	spynetalt.microsoft.com
 # End of entries inserted by Spybot Anti-Beacon for Windows 10
+
+#Start of entries inserted by Attention Service
+0.0.0.0 youtube.com
+0.0.0.0 youtube.com
+0.0.0.0 sigma.com
+0.0.0.0 youtu.be
+0.0.0.0 youtu.be
+
+#End of entries inserted by Attention Service

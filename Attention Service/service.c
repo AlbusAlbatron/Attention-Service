@@ -171,8 +171,9 @@ int remove_web_blocklist_entry(const wchar_t* domain) {
 
 int update_hostfile(void) {
 	FILE* fp;
+	FILE* fp_converted;
 	FILE* hfp_old;
-	FILE* hfp_new = NULL;
+	FILE* hfp_new;
 	wchar_t wbuffer[BUFFER_SIZE] = { 0 };
 	char buffer[BUFFER_SIZE] = { 0 };
 
@@ -182,6 +183,12 @@ int update_hostfile(void) {
 	errno_t err = _wfopen_s(&fp, L"attention_service\\host_file_edit.txt", L"r");
 	if (err != 0 || fp == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open host_file_edit.txt\n");
+		return 1;
+	}
+	//Open converted edit file
+	err = fopen_s(&fp_converted, "attention_service\\host_file_edit_converted.txt", "w+");
+	if (err != 0 || fp_converted == NULL) {
+		wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
 		return 1;
 	}
 
@@ -202,6 +209,25 @@ int update_hostfile(void) {
 	//Read old hostfile into new hostfile
 	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_old)) {
 		fprintf_s(hfp_new, "%s", buffer);
+	}
+
+	//Convert host file edit to utf8 and format for hostfile
+	while (fgetws(wbuffer, (BUFFER_SIZE - 1), fp)) {
+		if (WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, BUFFER_SIZE, NULL, NULL) == 0) {
+			wprintf(L"Update_hostfile: Couldnt convert utf16 to utf8");
+			return 2;
+		}
+		//Check if newline is already in string and append accordingly
+		if (buffer[strlen(buffer) - 1] == '\n') {
+			if (fprintf_s(fp_converted, "0.0.0.0 %s", buffer) < 0) {
+				wprintf(L"Update_hostfile: Couldnt print converted string");
+			}
+		}
+		else {
+			if (fprintf_s(fp_converted, "0.0.0.0 %s\n", buffer) < 0) {
+				wprintf(L"Update_hostfile: Couldnt print converted string");
+			}
+		}
 	}
 
 
@@ -229,8 +255,7 @@ int main(void) {
 
 	create_required_files();
 	//add_web_blocklist_entry(L"youtu.be");
-	result = remove_web_blocklist_entry(L"idiot.com");
-	checker(result, L"remove_web_blocklist_entry");
+	remove_web_blocklist_entry(L"idiot.com");
 	update_hostfile();
 	return 0;
 }

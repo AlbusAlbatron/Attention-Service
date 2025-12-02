@@ -317,12 +317,43 @@ int update_hostfile(void) {
 	return 0;
 }
 
+int restore_hostfile(void) {
+	FILE* hfp_real;
+	FILE* hfp_old;
+	char buffer[BUFFER_SIZE] = { 0 };
+
+	//Read old host file
+	errno_t err = fopen_s(&hfp_old, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_old.txt", "r");
+	if (err != 0 || hfp_old == NULL) {
+		wprintf(L"add_web_blocklist_to_host_file: Failed to open old host file\n");
+		return 1;
+	}
+
+	//Open actual hostfile
+	err = fopen_s(&hfp_real, HOSTFILE, "w");
+	if (err != 0 || hfp_real == NULL) {
+		wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
+		return 1;
+	}
+	
+	//Copy old host file to the updated hostfile, restoring it to its original state
+	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_old)) {
+		printf("%s", buffer);
+		fprintf_s(hfp_real, "%s", buffer);
+	}
+
+	fclose(hfp_old);
+	fclose(hfp_real);
+	return 0;
+}
+
 int main(void) {
 	int result;
 
 	create_required_files();
 	add_web_blocklist_entry(L"youtu.be");
 	remove_web_blocklist_entry(L"idiot.com");
-	update_hostfile();
+	//update_hostfile();
+	restore_hostfile();
 	return 0;
 }

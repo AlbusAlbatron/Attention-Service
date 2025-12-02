@@ -216,44 +216,54 @@ int remove_web_blocklist_entry(const wchar_t* domain) {
 int update_hostfile(void) {
 	FILE* fp;
 	FILE* fp_converted;
-	FILE* hfp_old;
+	FILE* hfp_real;
 	FILE* hfp_new;
+	FILE* hfp_old;
 	wchar_t wbuffer[BUFFER_SIZE] = { 0 };
 	char buffer[BUFFER_SIZE] = { 0 };
 
 
-
-	//Read list of edits
+	//Open host file edit
 	errno_t err = _wfopen_s(&fp, L"attention_service\\host_file_edit.txt", L"r");
 	if (err != 0 || fp == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open host_file_edit.txt\n");
 		return 1;
 	}
+
 	//Open converted edit file
-	err = fopen_s(&fp_converted, "attention_service\\host_file_edit_converted.txt", "w+");
+	err = fopen_s(&fp_converted, "attention_service\\host_file_edit_converted.txt", "w");
 	if (err != 0 || fp_converted == NULL) {
-		wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
+		wprintf(L"add_web_blocklist_to_host_file: Failed to open converted blocklist file.\n");
 		return 1;
 	}
 
 	//Read old host file
-	err = fopen_s(&hfp_old, HOSTFILE, "r");
-	if (err != 0 || hfp_old == NULL) {
+	err = fopen_s(&hfp_real, HOSTFILE, "r");
+	if (err != 0 || hfp_real == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
 		return 1;
 	}
 
 	//Create new host file
-	err = fopen_s(&hfp_new, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\host.txt", "w");
+	err = fopen_s(&hfp_new, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_new.txt", "w");
 	if (err != 0 || hfp_new == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open new host file\n");
 		return 1;
 	}
 
-	//Read old hostfile into new hostfile
-	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_old)) {
-		fprintf_s(hfp_new, "%s", buffer);
+	//Create old hostfile store
+	err = fopen_s(&hfp_old, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_old.txt", "w");
+	if (err != 0 || hfp_old == NULL) {
+		wprintf(L"add_web_blocklist_to_host_file: Failed to open old host file\n");
+		return 1;
 	}
+
+	//Read old hostfile into new hostfile and save old hostfile
+	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_real)) {
+		fprintf_s(hfp_new, "%s", buffer);
+		fprintf_s(hfp_old, "%s", buffer);
+	}
+	fclose(hfp_real);
 
 	//Start entry for block list
 	fprintf_s(hfp_new, "\n#Start of entries inserted by Attention Service\n");
@@ -279,23 +289,29 @@ int update_hostfile(void) {
 	//End entry for blocklist
 	fprintf_s(hfp_new, "\n#End of entries inserted by Attention Service\n");
 
-	fclose(fp);
-
-
-	while (fgetws(wbuffer, BUFFER_SIZE, fp) != NULL) {
-		wchar_t cleaned[BUFFER_SIZE];
-		for (int i = 0; buffer[i] != L'\0'; i++) {
-			if (iswspace(buffer[i])) {
-				continue;
-			}
-
-			remove_whitespace(wbuffer, cleaned);
-			wprintf(L"File Contents:\n%s\n", cleaned);
-			break;
-		}
+	fclose(hfp_new);
+	err = fopen_s(&hfp_new, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_new.txt", "r");
+	if (err != 0 || hfp_new == NULL) {
+		wprintf(L"add_web_blocklist_to_host_file: Failed to open new host file\n");
+		return 1;
 	}
 
+	//Open real hostfile in write mode
+	err = fopen_s(&hfp_real, HOSTFILE, "w");
+	if (err != 0 || hfp_real == NULL) {
+		wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
+		return 1;
+	}
+
+	//Copy new hostfile into actual hostfile
+	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_new)) {
+		fprintf_s(hfp_real, "%s", buffer);
+	}
+
+
 	fclose(fp);
+	fclose(fp_converted);
+	fclose(hfp_real);
 	fclose(hfp_new);
 	fclose(hfp_old);
 	return 0;

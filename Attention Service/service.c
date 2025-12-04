@@ -14,6 +14,8 @@
 #include <wctype.h>
 #include <wchar.h>
 #include <io.h>
+#include<tlHelp32.h>
+
 
 
 const char HOSTFILE[] = "C:\\Windows\\System32\\drivers\\etc\\hosts";
@@ -68,7 +70,6 @@ int remove_blank_lines(const wchar_t* file_path) {
 	FILE* fp;
 	FILE* tfp;
 	wchar_t buffer[BUFFER_SIZE] = { 0 };
-	wchar_t cleaned[BUFFER_SIZE];
 	wchar_t temp_file[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_file";
 
 	errno_t err = _wfopen_s(&tfp, temp_file, L"w");
@@ -109,6 +110,9 @@ int remove_blank_lines(const wchar_t* file_path) {
 	return 0;
 }
 
+/*
+WEBSITE BLOCKER SECTION
+*/
 
 int add_web_blocklist_entry(const wchar_t* domain) {
 	FILE* fp;
@@ -347,13 +351,67 @@ int restore_hostfile(void) {
 	return 0;
 }
 
+/*
+PROGRAM BLOCKER SECTION
+*/
+
+int check_process_list(wchar_t* process_block_list, int array_count) {
+	HANDLE hProcessSnap;
+	PROCESSENTRY32 pe32;
+
+	pe32.dwSize = sizeof(PROCESSENTRY32);
+
+	//Take snapshot of all processes in system
+	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+	if (hProcessSnap == INVALID_HANDLE_VALUE) {
+		wprintf(L"get_process_list: Couldnt get ProcessSnap(INVALID_HANDLE_VALUE)");
+		return 1;
+	}
+
+	//Check first process
+	if (!Process32First(hProcessSnap, &pe32)) {
+		wprintf(L"get_process_list: Problem with first process.");
+		CloseHandle(hProcessSnap);
+		return 1;
+	}
+	
+	//Compare process name to list of blocked processes
+	do {
+		for (int i = 0; i < array_count; i++) {
+			if (_wcsicmp(process_block_list[i], pe32.szExeFile) == 0) {
+				block_program(&pe32);
+			}
+		}
+	} while (Process32Next(hProcessSnap, &pe32));
+	
+}
+
+int block_program(PROCESSENTRY32* pe32) {
+	HANDLE hProcess_terminate;
+	DWORD dwExitCode;
+
+	hProcess_terminate = OpenProcess(PROCESS_TERMINATE, TRUE, pe32.th32ProcessID);
+	if (hProcess_terminate == INVALID_HANDLE_VALUE) {
+		wprintf(L"block_program: Process_terminate is an invalid handle");
+		return 1;
+	}
+	GetExitCodeProcess(hProcess_terminate, dwExitCode);
+	if (TerminateProcess(hProcess_terminate, dwExitCode) == 0) {
+		wprintf(L"block_program: Could not terminate process.");
+		return 1;
+	}
+	return 0;
+}
+
 int main(void) {
 	int result;
 
-	create_required_files();
-	add_web_blocklist_entry(L"youtu.be");
-	remove_web_blocklist_entry(L"idiot.com");
+	//create_required_files();
+	//add_web_blocklist_entry(L"youtu.be");
+	//remove_web_blocklist_entry(L"idiot.com");
 	//update_hostfile();
-	restore_hostfile();
+	//restore_hostfile();
+
+
 	return 0;
 }

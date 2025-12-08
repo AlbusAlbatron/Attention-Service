@@ -1,0 +1,3 @@
+spotify.exe
+obsidian.exe
+google.exe

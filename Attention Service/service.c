@@ -369,11 +369,9 @@ int restore_hostfile(void) {
 /*
 PROGRAM BLOCKER SECTION
 */
-int initialise_process_blocklist_array(void) {
+int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* process_count) {
 	FILE* fp;
 	wchar_t buffer[BUFFER_SIZE] = { 0 };
-	wchar_t** process_blocklist_array = NULL;
-	int process_count = 0;
 
 
 	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"r");
@@ -383,24 +381,18 @@ int initialise_process_blocklist_array(void) {
 	}
 
 	while (fgetws(buffer, (BUFFER_SIZE - 1), fp)) {
-		wchar_t** tempptr = realloc(process_blocklist_array, (++process_count * sizeof(wchar_t*)));
+		wchar_t** tempptr = realloc(*process_blocklist_array, (++(*process_count) * sizeof(wchar_t*)));
 		if (tempptr == NULL) {
 			return 1;
 		}
 		else {
-			process_blocklist_array = tempptr;
+			*process_blocklist_array = tempptr;
 		}
-		process_blocklist_array[process_count - 1] = malloc((sizeof(wchar_t) * BUFFER_SIZE));
-		if (process_blocklist_array[process_count - 1] != 0) {
-			wcscpy_s(process_blocklist_array[process_count - 1], BUFFER_SIZE, buffer);
+		(*process_blocklist_array)[*process_count - 1] = malloc((sizeof(wchar_t) * BUFFER_SIZE));
+		if ((*process_blocklist_array)[*process_count - 1] != 0) {
+			wcscpy_s((*process_blocklist_array)[*process_count - 1], BUFFER_SIZE, buffer);
 		}
 		wprintf(L"%s\n", buffer);
-	}
-
-	for (int i = 0; i < process_count; i++) {
-		wprintf(L"%s: ", process_blocklist_array[i]);
-		wprintf(L"%p\n", &process_blocklist_array[i]);
-		wprintf(L"%d\n", i);
 	}
 
 }
@@ -473,10 +465,19 @@ int block_program(PROCESSENTRY32 pe32) {
 }
 
 int main(void) {
-	int result;
+	//Initialise process blocklist
+	wchar_t** process_blocklist_array = NULL;
+	int process_count = 0;
 
 	create_required_files();
-	initialise_process_blocklist_array();
+	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
+
+	wprintf(L"%d", process_count);
+	for (int i = 0; i < process_count; i++) {
+		wprintf(L"%s: ", process_blocklist_array[i]);
+		wprintf(L"%p\n", &process_blocklist_array[i]);
+		wprintf(L"%d\n", i);
+	}
 	//add_web_blocklist_entry(L"youtu.be");
 	//remove_web_blocklist_entry(L"idiot.com");
 	//update_hostfile();

@@ -485,15 +485,36 @@ int block_program(PROCESSENTRY32* pe32) {
 	return 0;
 }
 
-/*
-int start_block(wchar_t*** blocklist, int *process_count) {
 
+int start_block(wchar_t*** process_blocklist, int* process_count) {
+	float time_buffer;
+	int time_in_seconds;
+	time_t start_time;
+	int end_time;
 
 	wprintf_s(L"Enter how long you want to focus for in hours: ");
-	wscanf_s(L"%f");
+	wscanf_s(L"%f", &time_buffer);
+	wprintf_s(L"\n");
+	wprintf_s(L"Time: %f\n", time_buffer);
 
+	time_in_seconds = time_buffer * 3600;
+	
+	start_time = time(NULL);
+	end_time = start_time + time_in_seconds;
+	
+	//Add hostfile blocklist
+	update_hostfile();
+
+	//Run process blocker
+	while (time(NULL) != end_time) {
+		check_process_list(process_blocklist, process_count);
+	}
+
+	//Remove hostfile blocklist once time is up.
+	restore_hostfile();
+
+	return 0;
 } 
-*/
 
 
 int main(void) {
@@ -504,16 +525,18 @@ int main(void) {
 	create_required_files();
 	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
 
+	start_block(&process_blocklist_array, &process_count);
+
 	//Time needs to be in seconds
-	time_t start, end;
-	INT64 timer = 10;
+	//time_t start, end;
+	//INT64 timer = 10;
 
-	start = time(NULL);
-	end = start + timer;
+	//start = time(NULL);
+	//end = start + timer;
 
-	while (time(NULL) != (end)) {
-		check_process_list(&process_blocklist_array, &process_count);
-	}
+	//while (time(NULL) != (end)) {
+	//	check_process_list(&process_blocklist_array, &process_count);
+	//}
 
 
 	//add_web_blocklist_entry(L"youtu.be");

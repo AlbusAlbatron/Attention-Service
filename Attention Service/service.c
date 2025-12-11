@@ -14,8 +14,8 @@
 #include <wctype.h>
 #include <wchar.h>
 #include <io.h>
-#include<tlHelp32.h>
-
+#include <tlHelp32.h>
+#include <time.h>
 
 
 const char HOSTFILE[] = "C:\\Windows\\System32\\drivers\\etc\\hosts";
@@ -381,6 +381,12 @@ int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* 
 	}
 
 	while (fgetws(buffer, (BUFFER_SIZE - 1), fp)) {
+		//Remove newline from buffer
+		size_t buffer_len = wcslen(buffer);
+		if (buffer_len > 0 && buffer[buffer_len - 1] == L'\n') {
+			buffer[buffer_len - 1] = L'\0';
+		}
+
 		wchar_t** tempptr = realloc(*process_blocklist_array, (++(*process_count) * sizeof(wchar_t*)));
 		if (tempptr == NULL) {
 			return 1;
@@ -392,8 +398,8 @@ int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* 
 		if ((*process_blocklist_array)[*process_count - 1] != 0) {
 			wcscpy_s((*process_blocklist_array)[*process_count - 1], BUFFER_SIZE, buffer);
 		}
-		wprintf(L"%s\n", buffer);
 	}
+
 
 }
 
@@ -414,9 +420,12 @@ int add_process_blocklist_entry(const wchar_t* process_name, wchar_t* process_bl
 }
 
 
-int check_process_list(wchar_t** process_blocklist, int array_count) {
+int check_process_list(wchar_t*** process_blocklist, int* process_count) {
 	HANDLE hProcessSnap;
 	PROCESSENTRY32 pe32;
+
+	//Allow up to 10 process to be blocked on each run
+	int blocked_process[10] = { 0 };
 
 	pe32.dwSize = sizeof(PROCESSENTRY32);
 
@@ -436,33 +445,56 @@ int check_process_list(wchar_t** process_blocklist, int array_count) {
 	
 	//Compare process name to list of blocked processes and terminates them if found
 	do {
-		for (int i = 0; i < array_count; i++) {
-			if (_wcsicmp(process_blocklist[i], pe32.szExeFile) == 0) {
-				block_program(pe32);
+		for (int i = 0; i < *process_count; i++) {
+			if (_wcsicmp((*process_blocklist)[i], pe32.szExeFile) == 0) {
+				block_program(&pe32); // If returns -1 that means process is closed already
+
+				//Need to sort this out
+				blocked_process[i] = i;
+				break;
 			}
 		}
 	} while (Process32Next(hProcessSnap, &pe32));
 	
+	return 0;
 }
 
-int block_program(PROCESSENTRY32 pe32) {
+int block_program(PROCESSENTRY32* pe32) {
 	HANDLE hProcess_terminate;
 	DWORD dwExitCode;
 
 	//Open process with terminate permission
-	hProcess_terminate = OpenProcess(PROCESS_TERMINATE, TRUE, pe32.th32ProcessID);
-	if (hProcess_terminate == INVALID_HANDLE_VALUE) {
+	hProcess_terminate = OpenProcess(PROCESS_TERMINATE, TRUE, (*pe32).th32ProcessID);
+	
+	//Check if process has been closed already
+	if (hProcess_terminate == NULL) {
+		return -1;
+	}
+	else if (hProcess_terminate == INVALID_HANDLE_VALUE) {
 		wprintf(L"block_program: Process_terminate is an invalid handle");
 		return 1;
 	}
 	//Terminate process
 	GetExitCodeProcess(hProcess_terminate, &dwExitCode);
 	if (TerminateProcess(hProcess_terminate, dwExitCode) == 0) {
-		wprintf(L"block_program: Could not terminate process.");
+		wprintf(L"block_program: Could not terminate process.\n");
 		return 1;
 	}
+
+	CloseHandle(hProcess_terminate);
 	return 0;
 }
+
+/*
+int start_block(wchar_t*** blocklist, int *process_count) {
+
+
+	wprintf_s(L"Enter how long you want to focus for in hours: ");
+	wscanf_s(L"%f");
+
+} 
+*/
+
 
 int main(void) {
 	//Initialise process blocklist
@@ -472,17 +504,24 @@ int main(void) {
 	create_required_files();
 	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
 
-	wprintf(L"%d", process_count);
-	for (int i = 0; i < process_count; i++) {
-		wprintf(L"%s: ", process_blocklist_array[i]);
-		wprintf(L"%p\n", &process_blocklist_array[i]);
-		wprintf(L"%d\n", i);
+	//Time needs to be in seconds
+	time_t start, end;
+	INT64 timer = 10;
+
+	start = time(NULL);
+	end = start + timer;
+
+	while (time(NULL) != (end)) {
+		check_process_list(&process_blocklist_array, &process_count);
 	}
+
+
 	//add_web_blocklist_entry(L"youtu.be");
 	//remove_web_blocklist_entry(L"idiot.com");
 	//update_hostfile();
 	//restore_hostfile();
 	//add_process_blocklist_entry(wscanf_s("%s", &count), )
-
+		
+	wprintf(L"Program succesfully ended\n");
 	return 0;
 }

@@ -17,6 +17,9 @@
 #include <tlHelp32.h>
 #include <time.h>
 
+//Declare functions
+int block_program(PROCESSENTRY32*);
+
 
 const char HOSTFILE[] = "C:\\Windows\\System32\\drivers\\etc\\hosts";
 const wchar_t HOSTFILE_EDIT[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\host_file_edit.txt";
@@ -383,29 +386,37 @@ int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* 
 	while (fgetws(buffer, (BUFFER_SIZE - 1), fp)) {
 		//Remove newline from buffer
 		size_t buffer_len = wcslen(buffer);
+
+		//Remove newline from buffer
 		if (buffer_len > 0 && buffer[buffer_len - 1] == L'\n') {
 			buffer[buffer_len - 1] = L'\0';
 		}
 
+		//Create array
 		wchar_t** tempptr = realloc(*process_blocklist_array, (++(*process_count) * sizeof(wchar_t*)));
 		if (tempptr == NULL) {
+			wprintf(L"intialise_process_blocklist_array: Reallocation failed\n");
 			return 1;
 		}
 		else {
 			*process_blocklist_array = tempptr;
 		}
+
 		(*process_blocklist_array)[*process_count - 1] = malloc((sizeof(wchar_t) * BUFFER_SIZE));
 		if ((*process_blocklist_array)[*process_count - 1] != 0) {
 			wcscpy_s((*process_blocklist_array)[*process_count - 1], BUFFER_SIZE, buffer);
 		}
 	}
 
+	fclose(fp);
 
+	return 0;
 }
 
-int add_process_blocklist_entry(const wchar_t* process_name, wchar_t* process_blocklist) {
+
+int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blocklist_array, int* process_count) {
 	FILE* fp;
-	wchar_t buffer[BUFFER_SIZE] = { 0 };
+	size_t process_name_len = wcslen(process_name);
 
 	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"a");
 	if (err != 0 || fp == NULL) {
@@ -413,8 +424,26 @@ int add_process_blocklist_entry(const wchar_t* process_name, wchar_t* process_bl
 		return 1;
 	}
 	fputwc(L'\n', fp);
-	fputws(buffer, fp);
+	fputws(process_name, fp);
 	fclose(fp);
+
+	wchar_t** tempptr = realloc(*process_blocklist_array, (++(*process_count) * sizeof(wchar_t*)));
+	if (tempptr == NULL) {
+		wprintf(L"add_process_blocklist_entry: Reallocation failed\n");
+		return 1;
+	}
+	else {
+		*process_blocklist_array = tempptr;
+	}
+
+	(*process_blocklist_array)[*process_count - 1] = malloc((process_name_len * sizeof(wchar_t)));
+	if ((*process_blocklist_array)[*process_count - 1] != 0) {
+		wcscpy_s((*process_blocklist_array)[*process_count - 1], process_name_len + 1, process_name); //add one to name len for endline symbol \0 or else buffer is overrun
+	}
+
+	for (int i = 0; i < *process_count; i++) {
+		wprintf(L"%s\n", (*process_blocklist_array)[i]);
+	}
 
 	return 0;
 }
@@ -523,21 +552,13 @@ int main(void) {
 	int process_count = 0;
 
 	create_required_files();
+
+
 	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
 
+	add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
+
 	start_block(&process_blocklist_array, &process_count);
-
-	//Time needs to be in seconds
-	//time_t start, end;
-	//INT64 timer = 10;
-
-	//start = time(NULL);
-	//end = start + timer;
-
-	//while (time(NULL) != (end)) {
-	//	check_process_list(&process_blocklist_array, &process_count);
-	//}
-
 
 	//add_web_blocklist_entry(L"youtu.be");
 	//remove_web_blocklist_entry(L"idiot.com");

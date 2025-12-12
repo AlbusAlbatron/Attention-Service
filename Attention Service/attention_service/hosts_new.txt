@@ -76,13 +76,5 @@
 0.0.0.0 youtube.com
 0.0.0.0 sigma.com
 0.0.0.0 youtu.be
-0.0.0.0 youtu.be
-0.0.0.0 youtu.be
-0.0.0.0 youtu.be
-0.0.0.0 youtu.be
-0.0.0.0 youtu.be
-0.0.0.0 youtu.be
-0.0.0.0 youtu.be
-0.0.0.0 youtu.be
 
 #End of entries inserted by Attention Service

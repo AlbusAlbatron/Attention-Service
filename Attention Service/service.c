@@ -452,9 +452,9 @@ int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blockl
 int check_process_list(wchar_t*** process_blocklist, int* process_count) {
 	HANDLE hProcessSnap;
 	PROCESSENTRY32 pe32;
-
-	//Allow up to 10 process to be blocked on each run
-	int blocked_process[10] = { 0 };
+	
+	DWORD blocked_pids[50];
+	int blocked_pids_count = 0;
 
 	pe32.dwSize = sizeof(PROCESSENTRY32);
 
@@ -474,15 +474,30 @@ int check_process_list(wchar_t*** process_blocklist, int* process_count) {
 	
 	//Compare process name to list of blocked processes and terminates them if found
 	do {
-		for (int i = 0; i < *process_count; i++) {
-			if (_wcsicmp((*process_blocklist)[i], pe32.szExeFile) == 0) {
-				block_program(&pe32); // If returns -1 that means process is closed already
-
-				//Need to sort this out
-				blocked_process[i] = i;
+		//wprintf(L"Process: %s\n", pe32.szExeFile);
+		int already_blocked = 0;
+		for (int j = 0; j < blocked_pids_count; j++) {
+			if (blocked_pids[j] == pe32.th32ParentProcessID) {
+				already_blocked = 1;
 				break;
 			}
 		}
+
+		if (already_blocked != 1) {
+			for (int i = 0; i < *process_count; i++) {
+				if (_wcsicmp((*process_blocklist)[i], pe32.szExeFile) == 0) {
+					int block_result = block_program(&pe32); // If returns -1 that means process is closed already
+					if (block_result == 0) {
+						blocked_pids[blocked_pids_count] = pe32.th32ParentProcessID;
+						blocked_pids_count++;
+					}
+					else if (block_result == -1) {
+						wprintf(L"Process already closed\n");
+					}
+				}
+			}
+		}
+
 	} while (Process32Next(hProcessSnap, &pe32));
 	
 	return 0;
@@ -500,15 +515,14 @@ int block_program(PROCESSENTRY32* pe32) {
 		return -1;
 	}
 	else if (hProcess_terminate == INVALID_HANDLE_VALUE) {
-		wprintf(L"block_program: Process_terminate is an invalid handle");
+		wprintf(L"block_program: Process_terminates is an invalid handle\n");
 		return 1;
 	}
-	//Terminate process
+
+	//Terminate process and ignore the bloody fact that half the time it wont be able to terminate anything (:
 	GetExitCodeProcess(hProcess_terminate, &dwExitCode);
-	if (TerminateProcess(hProcess_terminate, dwExitCode) == 0) {
-		wprintf(L"block_program: Could not terminate process.\n");
-		return 1;
-	}
+	TerminateProcess(hProcess_terminate, dwExitCode);
+
 
 	CloseHandle(hProcess_terminate);
 	return 0;
@@ -556,7 +570,7 @@ int main(void) {
 
 	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
 
-	add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
+	//add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
 
 	start_block(&process_blocklist_array, &process_count);
 

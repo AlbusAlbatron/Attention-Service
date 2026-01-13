@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <windows.h>
 #include <wchar.h>
+#include <commctrl.h>
 
 //Make hInstance global
 HINSTANCE g_hInstance;
@@ -22,7 +23,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
     // Register the window class.
-    const wchar_t CLASS_NAME[] = L"Sample Window Class";
+    const wchar_t CLASS_NAME[] = L"MAIN WINDOW";
 
     WNDCLASS wc = { };
 
@@ -82,6 +83,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     
     case WM_CREATE: {
         CreateWindowW(L"BUTTON", L"Start Block", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 200, 200, 100, 50, hwnd, (HMENU)START_BUTTON, g_hInstance, NULL);
+
         HWND edit_area = CreateWindow(L"edit", NULL, WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL |
             WS_BORDER | ES_LEFT | ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL,
             300, 300, 300, 50, hwnd, (HMENU)1, ((LPCREATESTRUCT)lParam)->hInstance, NULL);
@@ -115,24 +117,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     }
     case WM_LBUTTONDOWN: {
-        HDC wdc = GetDC(hwnd);
-        RECT rect;
-        POINT cursor_pos = { 0 };
-
-        //Get cursor position in Client coordinates
-        GetCursorPos(&cursor_pos);
-        ScreenToClient(hwnd, &cursor_pos);
-
-        //Draw text on location of mousecursor
-
-        GetClientRect(hwnd, &rect);
-        SetTextColor(wdc, 0x00000000);
-        SetBkMode(wdc, TRANSPARENT);
-        rect.left = cursor_pos.x;
-        rect.top = cursor_pos.y;
-        DrawText(wdc, L"DON'T DO THAT", -1, &rect, DT_SINGLELINE | DT_NOCLIP);
-
-        ReleaseDC(hwnd, wdc);
         break;
     }
     case WM_SYSCOLORCHANGE: {

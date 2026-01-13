@@ -6,7 +6,7 @@
 #define _UNICODE
 #endif
 
-#define BUFFER_SIZE 1024
+#include "attention.h"
 
 #include <windows.h>
 #include <stdio.h>
@@ -17,9 +17,6 @@
 #include <tlHelp32.h>
 #include <time.h>
 
-//Declare functions
-int block_program(PROCESSENTRY32*);
-
 
 const char HOSTFILE[] = "C:\\Windows\\System32\\drivers\\etc\\hosts";
 const wchar_t HOSTFILE_EDIT[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\host_file_edit.txt";
@@ -28,11 +25,7 @@ const wchar_t TEMP_HOSTFILE_EDIT[] = L"G:\\C Project - Attention Service\\Attent
 const wchar_t PROCESS_BLOCKLIST[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\process_blocklist.txt";
 const wchar_t TEMP_PROCESSBLOCKLIST[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_process_blocklist.txt";
 
-void checker(int result, const wchar_t* func_name) {
-	if (result != 0) {
-		wprintf(L"%s returned error code: %d\n", func_name, result);
-	}
-}
+
 
 
 int remove_whitespace(const wchar_t* src, wchar_t* dst) {
@@ -420,7 +413,7 @@ int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blockl
 
 	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"a");
 	if (err != 0 || fp == NULL) {
-		wprintf(L"add_web_blocklist_entry: Failed to open host_file_edit.txt\n");
+		wprintf(L"add_web_blocklist_entry: Failed to open process_blocklist.txt\n");
 		return 1;
 	}
 	fputwc(L'\n', fp);
@@ -448,6 +441,44 @@ int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blockl
 	return 0;
 }
 
+int remove_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blocklist_array, int* process_count) {
+	int found = 0;
+
+	//Look for and remove process from array
+	for (int i = 0; i < *process_count; i++) {
+		if (lstrcmpiW((*process_blocklist_array)[i], process_name) == 0) {
+			for (int j = i; j < *process_count - 1; j++) {
+				(*process_blocklist_array)[j] = (*process_blocklist_array)[j + 1];
+			}
+			(*process_count)--;
+			found = 1;
+			break;
+		}
+	}
+
+	if (!found) {
+		wprintf(L"Could not find entry\n");
+		return 1;
+	}
+
+	//Remove found process from process_blocklist file
+
+	FILE* fp;
+	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"w");
+	if (err != 0 || fp == NULL) {
+		wprintf(L"add_web_blocklist_entry: Failed to open host_file_edit.txt\n");
+		return 1;
+	}
+
+	for (int i = 0; i < *process_count; i++) {
+		fwprintf_s(fp, L"%s\n", (*process_blocklist_array)[i]);
+	}
+
+	fclose(fp);
+	
+	return 0;
+	
+}
 
 int check_process_list(wchar_t*** process_blocklist, int* process_count) {
 	HANDLE hProcessSnap;
@@ -559,7 +590,48 @@ int start_block(wchar_t*** process_blocklist, int* process_count) {
 	return 0;
 } 
 
+int main(void) {
+	//Initialise process blocklist
+	wchar_t** process_blocklist_array = NULL;
+	int process_count = 0;
 
+	create_required_files();
+
+
+	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
+
+	wprintf(L"Original array\n");
+	for (int i = 0; i < process_count; i++) {
+		wprintf(L"%s, ", process_blocklist_array[i]);
+
+	}
+	wprintf(L"\n");
+
+	/*
+	add_process_blocklist_entry(L"sigma.exe", &process_blocklist_array, &process_count);
+
+	wprintf(L"After addition\n");
+	for (int i = 0; i < process_count; i++) {
+		wprintf(L"%s, ", process_blocklist_array[i]);
+
+	}
+	wprintf(L"\n");
+	*/
+
+	remove_process_blocklist_entry(L"6th", &process_blocklist_array, &process_count);
+
+	wprintf(L"After removal\n");
+	for (int i = 0; i < process_count; i++) {
+		wprintf(L"%s, ", process_blocklist_array[i]);
+
+	}
+	wprintf(L"\n");
+
+	return 0;
+}
+
+//Sample main() for reference later
+/*
 int main(void) {
 	//Initialise process blocklist
 	wchar_t** process_blocklist_array = NULL;
@@ -583,3 +655,4 @@ int main(void) {
 	wprintf(L"Program succesfully ended\n");
 	return 0;
 }
+*/

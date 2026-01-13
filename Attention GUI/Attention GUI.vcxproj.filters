@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="service.c">
+    <ClCompile Include="attentiongui.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

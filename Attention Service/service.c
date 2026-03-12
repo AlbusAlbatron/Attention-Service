@@ -6,7 +6,7 @@
 #define _UNICODE
 #endif
 
-#define BUFFER_SIZE 1024
+#include "attention.h"
 
 #include <windows.h>
 #include <stdio.h>
@@ -14,17 +14,18 @@
 #include <wctype.h>
 #include <wchar.h>
 #include <io.h>
+#include <tlHelp32.h>
+#include <time.h>
 
 
 const char HOSTFILE[] = "C:\\Windows\\System32\\drivers\\etc\\hosts";
 const wchar_t HOSTFILE_EDIT[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\host_file_edit.txt";
 const wchar_t TEMP_HOSTFILE_EDIT[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_blocklist.txt";
 
-void checker(int result, const wchar_t* func_name) {
-	if (result != 0) {
-		wprintf(L"%s returned error code: %d\n", func_name, result);
-	}
-}
+const wchar_t PROCESS_BLOCKLIST[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\process_blocklist.txt";
+const wchar_t TEMP_PROCESSBLOCKLIST[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_process_blocklist.txt";
+
+
 
 
 int remove_whitespace(const wchar_t* src, wchar_t* dst) {
@@ -50,13 +51,25 @@ int remove_whitespace(const wchar_t* src, wchar_t* dst) {
 void create_required_files(void) {
 	//Creates necessary directorys & files for program
 	CreateDirectory(L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service", NULL);
-	CreateFile(HOSTFILE_EDIT,
+
+	//Create hostfile edit
+	CreateFileW(HOSTFILE_EDIT,
 				(GENERIC_READ | GENERIC_WRITE),
 				(FILE_SHARE_READ | FILE_SHARE_WRITE),
 				NULL, CREATE_NEW,
 				FILE_ATTRIBUTE_NORMAL,
 				NULL);
+
+	//Create new host file
 	CreateFileA("G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\host.txt",
+		(GENERIC_READ | GENERIC_WRITE),
+		(FILE_SHARE_READ | FILE_SHARE_WRITE),
+		NULL, CREATE_NEW,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	//Create process_blocklist file
+	CreateFileW(PROCESS_BLOCKLIST,
 		(GENERIC_READ | GENERIC_WRITE),
 		(FILE_SHARE_READ | FILE_SHARE_WRITE),
 		NULL, CREATE_NEW,
@@ -68,7 +81,6 @@ int remove_blank_lines(const wchar_t* file_path) {
 	FILE* fp;
 	FILE* tfp;
 	wchar_t buffer[BUFFER_SIZE] = { 0 };
-	wchar_t cleaned[BUFFER_SIZE];
 	wchar_t temp_file[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_file";
 
 	errno_t err = _wfopen_s(&tfp, temp_file, L"w");
@@ -109,6 +121,9 @@ int remove_blank_lines(const wchar_t* file_path) {
 	return 0;
 }
 
+/*
+WEBSITE BLOCKER SECTION
+*/
 
 int add_web_blocklist_entry(const wchar_t* domain) {
 	FILE* fp;
@@ -265,56 +280,56 @@ int update_hostfile(void) {
 	}
 	fclose(hfp_real);
 
-	//Start entry for block list
-	fprintf_s(hfp_new, "\n#Start of entries inserted by Attention Service\n");
-	//Convert host file edit to utf8 and format for hostfile
-	remove_blank_lines(HOSTFILE_EDIT);
-	while (fgetws(wbuffer, (BUFFER_SIZE - 1), fp)) {
-		if (WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, BUFFER_SIZE, NULL, NULL) == 0) {
-			wprintf(L"Update_hostfile: Couldnt convert utf16 to utf8");
-			return 2;
-		}
-		//Check if newline is already in string and append to new host file accordingly
-		if (buffer[strlen(buffer) - 1] == '\n') {
-			if (fprintf_s(hfp_new, "0.0.0.0 %s", buffer) < 0) {
-				wprintf(L"Update_hostfile: Couldnt print converted string");
-			}
-		}
-		else {
-			if (fprintf_s(hfp_new, "0.0.0.0 %s\n", buffer) < 0) {
-				wprintf(L"Update_hostfile: Couldnt print converted string");
-			}
+//Start entry for block list
+fprintf_s(hfp_new, "\n#Start of entries inserted by Attention Service\n");
+//Convert host file edit to utf8 and format for hostfile
+remove_blank_lines(HOSTFILE_EDIT);
+while (fgetws(wbuffer, (BUFFER_SIZE - 1), fp)) {
+	if (WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, BUFFER_SIZE, NULL, NULL) == 0) {
+		wprintf(L"Update_hostfile: Couldnt convert utf16 to utf8");
+		return 2;
+	}
+	//Check if newline is already in string and append to new host file accordingly
+	if (buffer[strlen(buffer) - 1] == '\n') {
+		if (fprintf_s(hfp_new, "0.0.0.0 %s", buffer) < 0) {
+			wprintf(L"Update_hostfile: Couldnt print converted string");
 		}
 	}
-	//End entry for blocklist
-	fprintf_s(hfp_new, "\n#End of entries inserted by Attention Service\n");
-
-	fclose(hfp_new);
-	err = fopen_s(&hfp_new, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_new.txt", "r");
-	if (err != 0 || hfp_new == NULL) {
-		wprintf(L"add_web_blocklist_to_host_file: Failed to open new host file\n");
-		return 1;
+	else {
+		if (fprintf_s(hfp_new, "0.0.0.0 %s\n", buffer) < 0) {
+			wprintf(L"Update_hostfile: Couldnt print converted string");
+		}
 	}
+}
+//End entry for blocklist
+fprintf_s(hfp_new, "\n#End of entries inserted by Attention Service\n");
 
-	//Open real hostfile in write mode
-	err = fopen_s(&hfp_real, HOSTFILE, "w");
-	if (err != 0 || hfp_real == NULL) {
-		wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
-		return 1;
-	}
+fclose(hfp_new);
+err = fopen_s(&hfp_new, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_new.txt", "r");
+if (err != 0 || hfp_new == NULL) {
+	wprintf(L"add_web_blocklist_to_host_file: Failed to open new host file\n");
+	return 1;
+}
 
-	//Copy new hostfile into actual hostfile
-	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_new)) {
-		fprintf_s(hfp_real, "%s", buffer);
-	}
+//Open real hostfile in write mode
+err = fopen_s(&hfp_real, HOSTFILE, "w");
+if (err != 0 || hfp_real == NULL) {
+	wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
+	return 1;
+}
+
+//Copy new hostfile into actual hostfile
+while (fgets(buffer, (BUFFER_SIZE - 1), hfp_new)) {
+	fprintf_s(hfp_real, "%s", buffer);
+}
 
 
-	fclose(fp);
-	fclose(fp_converted);
-	fclose(hfp_real);
-	fclose(hfp_new);
-	fclose(hfp_old);
-	return 0;
+fclose(fp);
+fclose(fp_converted);
+fclose(hfp_real);
+fclose(hfp_new);
+fclose(hfp_old);
+return 0;
 }
 
 int restore_hostfile(void) {
@@ -335,7 +350,7 @@ int restore_hostfile(void) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open original host file.\n");
 		return 1;
 	}
-	
+
 	//Copy old host file to the updated hostfile, restoring it to its original state
 	while (fgets(buffer, (BUFFER_SIZE - 1), hfp_old)) {
 		printf("%s", buffer);
@@ -347,13 +362,297 @@ int restore_hostfile(void) {
 	return 0;
 }
 
-int main(void) {
-	int result;
+/*
+PROGRAM BLOCKER SECTION
+*/
+int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* process_count) {
+	FILE* fp;
+	wchar_t buffer[BUFFER_SIZE] = { 0 };
 
-	create_required_files();
-	add_web_blocklist_entry(L"youtu.be");
-	remove_web_blocklist_entry(L"idiot.com");
-	//update_hostfile();
-	restore_hostfile();
+
+	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"r");
+	if (err != 0 || fp == NULL) {
+		wprintf(L"add_web_blocklist_entry: Failed to open host_file_edit.txt\n");
+		return 1;
+	}
+
+	while (fgetws(buffer, (BUFFER_SIZE - 1), fp)) {
+		//Remove newline from buffer
+		size_t buffer_len = wcslen(buffer);
+
+		//Remove newline from buffer
+		if (buffer_len > 0 && buffer[buffer_len - 1] == L'\n') {
+			buffer[buffer_len - 1] = L'\0';
+		}
+
+		//Create array
+		wchar_t** tempptr = realloc(*process_blocklist_array, (++(*process_count) * sizeof(wchar_t*)));
+		if (tempptr == NULL) {
+			wprintf(L"intialise_process_blocklist_array: Reallocation failed\n");
+			return 1;
+		}
+		else {
+			*process_blocklist_array = tempptr;
+		}
+
+		(*process_blocklist_array)[*process_count - 1] = malloc((sizeof(wchar_t) * BUFFER_SIZE));
+		if ((*process_blocklist_array)[*process_count - 1] != 0) {
+			wcscpy_s((*process_blocklist_array)[*process_count - 1], BUFFER_SIZE, buffer);
+		}
+	}
+
+	fclose(fp);
+
 	return 0;
 }
+
+
+int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blocklist_array, int* process_count) {
+	FILE* fp;
+	size_t process_name_len = wcslen(process_name);
+
+	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"a");
+	if (err != 0 || fp == NULL) {
+		wprintf(L"add_web_blocklist_entry: Failed to open process_blocklist.txt\n");
+		return 1;
+	}
+	fputwc(L'\n', fp);
+	fputws(process_name, fp);
+	fclose(fp);
+
+	wchar_t** tempptr = realloc(*process_blocklist_array, (++(*process_count) * sizeof(wchar_t*)));
+	if (tempptr == NULL) {
+		wprintf(L"add_process_blocklist_entry: Reallocation failed\n");
+		return 1;
+	}
+	else {
+		*process_blocklist_array = tempptr;
+	}
+
+	(*process_blocklist_array)[*process_count - 1] = malloc((process_name_len * sizeof(wchar_t)));
+	if ((*process_blocklist_array)[*process_count - 1] != 0) {
+		wcscpy_s((*process_blocklist_array)[*process_count - 1], process_name_len + 1, process_name); //add one to name len for endline symbol \0 or else buffer is overrun
+	}
+
+	for (int i = 0; i < *process_count; i++) {
+		wprintf(L"%s\n", (*process_blocklist_array)[i]);
+	}
+
+	return 0;
+}
+
+int remove_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blocklist_array, int* process_count) {
+	int found = 0;
+
+	//Look for and remove process from array
+	for (int i = 0; i < *process_count; i++) {
+		if (lstrcmpiW((*process_blocklist_array)[i], process_name) == 0) {
+			for (int j = i; j < *process_count - 1; j++) {
+				(*process_blocklist_array)[j] = (*process_blocklist_array)[j + 1];
+			}
+			(*process_count)--;
+			found = 1;
+			break;
+		}
+	}
+
+	if (!found) {
+		wprintf(L"Could not find entry\n");
+		return 1;
+	}
+
+	//Remove found process from process_blocklist file
+
+	FILE* fp;
+	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"w");
+	if (err != 0 || fp == NULL) {
+		wprintf(L"add_web_blocklist_entry: Failed to open host_file_edit.txt\n");
+		return 1;
+	}
+
+	for (int i = 0; i < *process_count; i++) {
+		fwprintf_s(fp, L"%s\n", (*process_blocklist_array)[i]);
+	}
+
+	fclose(fp);
+	
+	return 0;
+	
+}
+
+int check_process_list(wchar_t*** process_blocklist, int* process_count) {
+	HANDLE hProcessSnap;
+	PROCESSENTRY32 pe32;
+	
+	DWORD blocked_pids[50];
+	int blocked_pids_count = 0;
+
+	pe32.dwSize = sizeof(PROCESSENTRY32);
+
+	//Take snapshot of all processes in system
+	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (hProcessSnap == INVALID_HANDLE_VALUE) {
+		wprintf(L"get_process_list: Couldnt get ProcessSnap(INVALID_HANDLE_VALUE)");
+		return 1;
+	}
+
+	//Check first process
+	if (!Process32First(hProcessSnap, &pe32)) {
+		wprintf(L"get_process_list: Problem with first process.");
+		CloseHandle(hProcessSnap);
+		return 1;
+	}
+	
+	//Compare process name to list of blocked processes and terminates them if found
+	do {
+		//wprintf(L"Process: %s\n", pe32.szExeFile);
+		int already_blocked = 0;
+		for (int j = 0; j < blocked_pids_count; j++) {
+			if (blocked_pids[j] == pe32.th32ParentProcessID) {
+				already_blocked = 1;
+				break;
+			}
+		}
+
+		if (already_blocked != 1) {
+			for (int i = 0; i < *process_count; i++) {
+				if (_wcsicmp((*process_blocklist)[i], pe32.szExeFile) == 0) {
+					int block_result = block_program(&pe32); // If returns -1 that means process is closed already
+					if (block_result == 0) {
+						blocked_pids[blocked_pids_count] = pe32.th32ParentProcessID;
+						blocked_pids_count++;
+					}
+					else if (block_result == -1) {
+						wprintf(L"Process already closed\n");
+					}
+				}
+			}
+		}
+
+	} while (Process32Next(hProcessSnap, &pe32));
+	
+	return 0;
+}
+
+int block_program(PROCESSENTRY32* pe32) {
+	HANDLE hProcess_terminate;
+	DWORD dwExitCode;
+
+	//Open process with terminate permission
+	hProcess_terminate = OpenProcess(PROCESS_TERMINATE, TRUE, (*pe32).th32ProcessID);
+	
+	//Check if process has been closed already
+	if (hProcess_terminate == NULL) {
+		return -1;
+	}
+	else if (hProcess_terminate == INVALID_HANDLE_VALUE) {
+		wprintf(L"block_program: Process_terminates is an invalid handle\n");
+		return 1;
+	}
+
+	//Terminate process and ignore the bloody fact that half the time it wont be able to terminate anything (:
+	GetExitCodeProcess(hProcess_terminate, &dwExitCode);
+	TerminateProcess(hProcess_terminate, dwExitCode);
+
+
+	CloseHandle(hProcess_terminate);
+	return 0;
+}
+
+
+int start_block(wchar_t*** process_blocklist, int* process_count) {
+	float time_buffer;
+	int time_in_seconds;
+	time_t start_time;
+	int end_time;
+
+	wprintf_s(L"Enter how long you want to focus for in hours: ");
+	wscanf_s(L"%f", &time_buffer);
+	wprintf_s(L"\n");
+	wprintf_s(L"Time: %f\n", time_buffer);
+
+	time_in_seconds = time_buffer * 3600;
+	
+	start_time = time(NULL);
+	end_time = start_time + time_in_seconds;
+	
+	//Add hostfile blocklist
+	update_hostfile();
+
+	//Run process blocker
+	while (time(NULL) != end_time) {
+		check_process_list(process_blocklist, process_count);
+	}
+
+	//Remove hostfile blocklist once time is up.
+	restore_hostfile();
+
+	return 0;
+} 
+
+int main(void) {
+	//Initialise process blocklist
+	wchar_t** process_blocklist_array = NULL;
+	int process_count = 0;
+
+	create_required_files();
+
+
+	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
+
+	wprintf(L"Original array\n");
+	for (int i = 0; i < process_count; i++) {
+		wprintf(L"%s, ", process_blocklist_array[i]);
+
+	}
+	wprintf(L"\n");
+
+	/*
+	add_process_blocklist_entry(L"sigma.exe", &process_blocklist_array, &process_count);
+
+	wprintf(L"After addition\n");
+	for (int i = 0; i < process_count; i++) {
+		wprintf(L"%s, ", process_blocklist_array[i]);
+
+	}
+	wprintf(L"\n");
+	*/
+
+	remove_process_blocklist_entry(L"6th", &process_blocklist_array, &process_count);
+
+	wprintf(L"After removal\n");
+	for (int i = 0; i < process_count; i++) {
+		wprintf(L"%s, ", process_blocklist_array[i]);
+
+	}
+	wprintf(L"\n");
+
+	return 0;
+}
+
+//Sample main() for reference later
+/*
+int main(void) {
+	//Initialise process blocklist
+	wchar_t** process_blocklist_array = NULL;
+	int process_count = 0;
+
+	create_required_files();
+
+
+	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
+
+	//add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
+
+	start_block(&process_blocklist_array, &process_count);
+
+	//add_web_blocklist_entry(L"youtu.be");
+	//remove_web_blocklist_entry(L"idiot.com");
+	//update_hostfile();
+	//restore_hostfile();
+	//add_process_blocklist_entry(wscanf_s("%s", &count), )
+		
+	wprintf(L"Program succesfully ended\n");
+	return 0;
+}
+*/

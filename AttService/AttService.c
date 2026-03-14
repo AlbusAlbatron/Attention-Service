@@ -172,7 +172,7 @@ DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 		*/
 		if (logFile)
 		{
-			fprintf(logFile, "Service tick at %d\n", GetTickCount());
+			fprintf(logFile, "Service tick at %d\n", GetTickCount64());
 			fflush(logFile);
 		}
 

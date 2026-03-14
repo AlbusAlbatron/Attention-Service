@@ -18,12 +18,14 @@
 #include <time.h>
 
 
-const char HOSTFILE[] = "C:\\Windows\\System32\\drivers\\etc\\hosts";
-const wchar_t HOSTFILE_EDIT[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\host_file_edit.txt";
-const wchar_t TEMP_HOSTFILE_EDIT[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_blocklist.txt";
+#define HOSTFILE "C:\\Windows\\System32\\drivers\\etc\\hosts"
+#define HOSTFILE_EDIT L"C:\\ProgramData\\AttentionService\\host_file_edit.txt"
+#define TEMP_HOSTFILE_EDIT L"C:\\ProgramData\\AttentionService\\temp_blocklist.txt"
 
-const wchar_t PROCESS_BLOCKLIST[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\process_blocklist.txt";
-const wchar_t TEMP_PROCESSBLOCKLIST[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_process_blocklist.txt";
+#define PROCESS_BLOCKLIST L"C:\\ProgramData\\AttentionService\\process_blocklist.txt"
+#define TEMP_PROCESSBLOCKLIST L"C:\\ProgramData\\AttentionService\\temp_process_blocklist.txt"
+
+#define ATTENTION_SERVICE_CONFIG L"C:\\ProgramData\\AttentionService\\cfg.txt"
 
 
 
@@ -49,39 +51,66 @@ int remove_whitespace(const wchar_t* src, wchar_t* dst) {
 }
 
 void create_required_files(void) {
+	HANDLE hFile;
+
 	//Creates necessary directorys & files for program
-	CreateDirectory(L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service", NULL);
+	CreateDirectory(L"C:\\ProgramData\\AttentionService", NULL);
 
 	//Create hostfile edit
-	CreateFileW(HOSTFILE_EDIT,
-				(GENERIC_READ | GENERIC_WRITE),
-				(FILE_SHARE_READ | FILE_SHARE_WRITE),
-				NULL, CREATE_NEW,
-				FILE_ATTRIBUTE_NORMAL,
-				NULL);
+	hFile = CreateFileW(HOSTFILE_EDIT,
+		(GENERIC_READ | GENERIC_WRITE),
+		(FILE_SHARE_READ | FILE_SHARE_WRITE),
+		NULL, CREATE_NEW,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+	if (hFile != INVALID_HANDLE_VALUE) {
+		CloseHandle(hFile);
+	}
 
 	//Create new host file
-	CreateFileA("G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\host.txt",
+	hFile = CreateFileA("C:\\ProgramData\\AttentionService\\host.txt",
 		(GENERIC_READ | GENERIC_WRITE),
 		(FILE_SHARE_READ | FILE_SHARE_WRITE),
 		NULL, CREATE_NEW,
 		FILE_ATTRIBUTE_NORMAL,
 		NULL);
+	if (hFile != INVALID_HANDLE_VALUE) {
+		CloseHandle(hFile);
+	}
 
 	//Create process_blocklist file
-	CreateFileW(PROCESS_BLOCKLIST,
+	hFile = CreateFileW(PROCESS_BLOCKLIST,
 		(GENERIC_READ | GENERIC_WRITE),
 		(FILE_SHARE_READ | FILE_SHARE_WRITE),
 		NULL, CREATE_NEW,
 		FILE_ATTRIBUTE_NORMAL,
 		NULL);
+	if (hFile != INVALID_HANDLE_VALUE) {
+		CloseHandle(hFile);
+	}
+
+	//Create config file and adds contents if first time
+	hFile = CreateFileW(ATTENTION_SERVICE_CONFIG,
+		(GENERIC_READ | GENERIC_WRITE),
+		(FILE_SHARE_READ | FILE_SHARE_WRITE),
+		NULL, CREATE_NEW,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+	if (hFile != INVALID_HANDLE_VALUE) {
+		CloseHandle(hFile);
+		FILE* cfg = _wfopen(ATTENTION_SERVICE_CONFIG, L"a");
+		if (cfg) {
+			fputws(L"timer_minutes=2\n", cfg);
+			fclose(cfg);
+		}
+	}
 }
 
 int remove_blank_lines(const wchar_t* file_path) {
 	FILE* fp;
 	FILE* tfp;
 	wchar_t buffer[BUFFER_SIZE] = { 0 };
-	wchar_t temp_file[] = L"G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\temp_file";
+	wchar_t temp_file[] = L"C:\\ProgramData\\AttentionService\\temp_file";
 
 	errno_t err = _wfopen_s(&tfp, temp_file, L"w");
 	if (err != 0 || tfp == NULL) {
@@ -130,7 +159,7 @@ int add_web_blocklist_entry(const wchar_t* domain) {
 	wchar_t buffer[BUFFER_SIZE] = { 0 };
 	wchar_t cleaned[BUFFER_SIZE];
 
-	errno_t err = _wfopen_s(&fp, L"attention_service\\host_file_edit.txt", L"a");
+	errno_t err = _wfopen_s(&fp, HOSTFILE_EDIT, L"a");
 	if (err != 0 || fp == NULL) {
 		wprintf(L"add_web_blocklist_entry: Failed to open host_file_edit.txt\n");
 		return 1;
@@ -150,12 +179,12 @@ int remove_web_blocklist_entry(const wchar_t* domain) {
 	FILE* tfp;
 
 	//Open both file and temp file
-	errno_t err = _wfopen_s(&fp, L"attention_service\\host_file_edit.txt", L"r");
+	errno_t err = _wfopen_s(&fp, HOSTFILE_EDIT, L"r");
 	if (err != 0 || fp == NULL) {
 		wprintf(L"remove_web_blocklist_entry: Failed to open host_file_edit.txt\n");
 		return 1;
 	}
-	err = _wfopen_s(&tfp, L"attention_service\\temp_blocklist.txt", L"w");
+	err = _wfopen_s(&tfp, TEMP_HOSTFILE_EDIT, L"w");
 	if (err != 0 || tfp == NULL) {
 		wprintf(L"remove_web_blocklist_entry: Failed to open temp file.txt\n");
 		fclose(fp);
@@ -239,14 +268,14 @@ int update_hostfile(void) {
 
 
 	//Open host file edit
-	errno_t err = _wfopen_s(&fp, L"attention_service\\host_file_edit.txt", L"r");
+	errno_t err = _wfopen_s(&fp, HOSTFILE_EDIT, L"r");
 	if (err != 0 || fp == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open host_file_edit.txt\n");
 		return 1;
 	}
 
 	//Open converted edit file
-	err = fopen_s(&fp_converted, "attention_service\\host_file_edit_converted.txt", "w");
+	err = fopen_s(&fp_converted, "C:\\ProgramData\\AttentionService\\host_file_edit_converted.txt", "w");
 	if (err != 0 || fp_converted == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open converted blocklist file.\n");
 		return 1;
@@ -260,14 +289,14 @@ int update_hostfile(void) {
 	}
 
 	//Create new host file
-	err = fopen_s(&hfp_new, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_new.txt", "w");
+	err = fopen_s(&hfp_new, "C:\\ProgramData\\AttentionService\\hosts_new.txt", "w");
 	if (err != 0 || hfp_new == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open new host file\n");
 		return 1;
 	}
 
 	//Create old hostfile store
-	err = fopen_s(&hfp_old, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_old.txt", "w");
+	err = fopen_s(&hfp_old, "C:\\ProgramData\\AttentionService\\hosts_old.txt", "w");
 	if (err != 0 || hfp_old == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open old host file\n");
 		return 1;
@@ -305,7 +334,7 @@ while (fgetws(wbuffer, (BUFFER_SIZE - 1), fp)) {
 fprintf_s(hfp_new, "\n#End of entries inserted by Attention Service\n");
 
 fclose(hfp_new);
-err = fopen_s(&hfp_new, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_new.txt", "r");
+err = fopen_s(&hfp_new, "C:\\ProgramData\\AttentionService\\hosts_new.txt", "r");
 if (err != 0 || hfp_new == NULL) {
 	wprintf(L"add_web_blocklist_to_host_file: Failed to open new host file\n");
 	return 1;
@@ -338,7 +367,7 @@ int restore_hostfile(void) {
 	char buffer[BUFFER_SIZE] = { 0 };
 
 	//Read old host file
-	errno_t err = fopen_s(&hfp_old, "G:\\C Project - Attention Service\\Attention Service\\Attention Service\\attention_service\\hosts_old.txt", "r");
+	errno_t err = fopen_s(&hfp_old, "C:\\ProgramData\\AttentionService\\hosts_old.txt", "r");
 	if (err != 0 || hfp_old == NULL) {
 		wprintf(L"add_web_blocklist_to_host_file: Failed to open old host file\n");
 		return 1;
@@ -372,7 +401,7 @@ int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* 
 
 	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"r");
 	if (err != 0 || fp == NULL) {
-		wprintf(L"add_web_blocklist_entry: Failed to open host_file_edit.txt\n");
+		wprintf(L"initialise_process_blocklist_array: Failed to open process_blocklist\n");
 		return 1;
 	}
 
@@ -413,7 +442,7 @@ int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blockl
 
 	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"a");
 	if (err != 0 || fp == NULL) {
-		wprintf(L"add_web_blocklist_entry: Failed to open process_blocklist.txt\n");
+		wprintf(L"add_process_blocklist_entry: Failed to open process_blocklist.txt\n");
 		return 1;
 	}
 	fputwc(L'\n', fp);
@@ -466,7 +495,7 @@ int remove_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blo
 	FILE* fp;
 	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"w");
 	if (err != 0 || fp == NULL) {
-		wprintf(L"add_web_blocklist_entry: Failed to open host_file_edit.txt\n");
+		wprintf(L"remove_process_blocklist_entry: Failed to open process blocklist\n");
 		return 1;
 	}
 
@@ -492,13 +521,13 @@ int check_process_list(wchar_t*** process_blocklist, int* process_count) {
 	//Take snapshot of all processes in system
 	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hProcessSnap == INVALID_HANDLE_VALUE) {
-		wprintf(L"get_process_list: Couldnt get ProcessSnap(INVALID_HANDLE_VALUE)");
+		wprintf(L"check_process_list: Couldnt get ProcessSnap(INVALID_HANDLE_VALUE)");
 		return 1;
 	}
 
 	//Check first process
 	if (!Process32First(hProcessSnap, &pe32)) {
-		wprintf(L"get_process_list: Problem with first process.");
+		wprintf(L"check_process_list: Problem with first process.");
 		CloseHandle(hProcessSnap);
 		return 1;
 	}
@@ -561,17 +590,29 @@ int block_program(PROCESSENTRY32* pe32) {
 
 
 int start_block(wchar_t*** process_blocklist, int* process_count) {
-	float time_buffer;
+	int time_buffer = 2;
 	int time_in_seconds;
 	time_t start_time;
 	int end_time;
 
+	FILE* fp = _wfopen(ATTENTION_SERVICE_CONFIG, L"r");
+	wchar_t buffer[BUFFER_SIZE];
+	
+	/*For terminal input (not useful in service)
 	wprintf_s(L"Enter how long you want to focus for in hours: ");
 	wscanf_s(L"%f", &time_buffer);
 	wprintf_s(L"\n");
 	wprintf_s(L"Time: %f\n", time_buffer);
+	*/
 
-	time_in_seconds = time_buffer * 3600;
+	//Get time in minutes from config file
+	while (fgetws(buffer, BUFFER_SIZE, fp)) {
+		if (wcsstr(buffer, L"timer_minutes=")) {
+			swscanf_s(buffer, L"timer_minutes=%d", &time_buffer);
+		}
+	}
+
+	time_in_seconds = time_buffer * 60;
 	
 	start_time = time(NULL);
 	end_time = start_time + time_in_seconds;

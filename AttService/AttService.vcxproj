@@ -104,10 +104,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>G:\C Project - Attention Service\Attention Service\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>G:\C Project - Attention Service\Attention Service\x64\Debug\Attention Service.lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -128,6 +130,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AttService.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="attention.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Attention Service\Attention Service.vcxproj">
+      <Project>{faef72a4-8d03-459d-bed8-e15f876a98a6}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

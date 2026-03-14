@@ -6,6 +6,7 @@
 #define _UNICODE
 #endif
 
+#include "attention.h"
 #include <Windows.h>
 #include <stdio.h>
 
@@ -19,7 +20,8 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv);
 VOID WINAPI ServiceCtrlHandler(DWORD);
 DWORD WINAPI ServiceWorkerThread(LPVOID lpParam);
 
-#define SERVICE_NAME TEXT("Attention Service")
+#define SERVICE_NAME TEXT("AttentionService")
+#define SERVICE_DISPLAY_NAME TEXT("Attention Service")
 
 //Main Entry Point
 int wmain(int argc, WCHAR* argv[])
@@ -67,6 +69,8 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	/*
 	Perform tasks necessary to start the service here
 	*/
+	//Create program data folder and files
+	create_required_files();
 
 	//Create a service stop event to wait on later
 	g_ServiceStopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -125,7 +129,7 @@ EXIT:
 }
 
 
-//Service Control Hanlder
+//Service Control Handler
 VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 {
 	switch (CtrlCode)
@@ -162,25 +166,38 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 //Service Worker Thread
 DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 {
-	FILE* logFile = fopen("G:\\service_log.txt", "a");
+	//Initialise variables
+	wchar_t** process_blocklist_array = NULL;
+	int process_count = 0;
 
-	//Periodically check if the service has been requested to stop
-	while (WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
-	{
-		/*
-		Perform main service function here
-		*/
-		if (logFile)
-		{
-			fprintf(logFile, "Service tick at %llu\n", GetTickCount64());
-			fflush(logFile);
-		}
-
-		//Simulate some work by sleeping and beeping baby!
-		Sleep(2000);
+	//Open log file
+	FILE* logFile = fopen("C:\\ProgramData\\AttentionService\\service.log", "a");
+	if (logFile) {
+		fwprintf(logFile, L"Service starting.\n");
+		fflush(logFile);
 	}
 
-	if (logFile) fclose(logFile);
+	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
+	if (logFile) {
+		fwprintf(logFile, L"Initialised process blocklist.\n");
+	}
+
+	add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
+	if (logFile) {
+		fwprintf(logFile, L"Added blocklist_entry.\n");
+	}
+
+	start_block(&process_blocklist_array, &process_count);
+
+
+	SetEvent(g_ServiceStopEvent);
+	if (logFile) {
+		fwprintf(logFile, L"Service Stopping.\n \n");
+	}
+	
+	if (logFile) {
+		fclose(logFile);
+	}
 	return ERROR_SUCCESS;
 }
 

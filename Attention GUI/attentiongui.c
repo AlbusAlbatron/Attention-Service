@@ -6,20 +6,21 @@
 #define _UNICODE
 #endif
 
-// Menu handle codes
+//Menu handle codes
 #define START_BUTTON 600
 
-#define PROCESS_INPUT_AREA 601
+#define EDIT_PROCESS_BUTTON 601
 #define ADD_PROCESS_BUTTON 602
 #define REMOVE_PROCESS_BUTTON 603
 
-#define WEB_INPUT_AREA 604
+#define EDIT_WEB_BUTTON 604
 #define ADD_WEB_BUTTON 605
 #define REMOVE_WEB_BUTTON 606
 
 #define TIMER_SET_INPUT 607
 #define TIMER_SET_BUTTON 608
 
+#include "attention.h"
 #include <stdio.h>
 #include <windows.h>
 #include <wchar.h>
@@ -79,44 +80,33 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_CREATE: {
-        // Process Block
-        CreateWindowEx(0, L"BUTTON", L"Process Settings",
+        //Process Block
+        CreateWindowEx(0, L"BUTTON", L"Process Blocker",
             WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
             10, 10, 250, 100, hwnd, 0, g_hInstance, NULL);
 
-        CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            20, 35, 150, 20, hwnd, (HMENU)PROCESS_INPUT_AREA, g_hInstance, NULL);
-
-        CreateWindowEx(0, L"BUTTON", L"Add",
+        CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Edit Process Blocklist",
             WS_CHILD | WS_VISIBLE,
-            20, 60, 60, 25, hwnd, (HMENU)ADD_PROCESS_BUTTON, g_hInstance, NULL);
+            20, 35, 150, 20, hwnd, (HMENU)EDIT_PROCESS_BUTTON, g_hInstance, NULL);
 
-        CreateWindowEx(0, L"BUTTON", L"Remove",
-            WS_CHILD | WS_VISIBLE,
-            85, 60, 60, 25, hwnd, (HMENU)REMOVE_PROCESS_BUTTON, g_hInstance, NULL);
-
-        // Web Block
-        CreateWindowEx(0, L"BUTTON", L"Web Settings",
+        //Web Block
+        CreateWindowEx(0, L"BUTTON", L"Web Blocker",
             WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
             10, 120, 250, 100, hwnd, 0, g_hInstance, NULL);
 
-        CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            20, 145, 150, 20, hwnd, (HMENU)WEB_INPUT_AREA, g_hInstance, NULL);
-
-        CreateWindowEx(0, L"BUTTON", L"Add",
+        CreateWindowEx(WS_EX_CLIENTEDGE, L"BUTTON", L"Edit Web Blocklist",
             WS_CHILD | WS_VISIBLE,
-            20, 170, 60, 25, hwnd, (HMENU)ADD_WEB_BUTTON, g_hInstance, NULL);
+            20, 145, 150, 20, hwnd, (HMENU)EDIT_WEB_BUTTON, g_hInstance, NULL);
 
-        CreateWindowEx(0, L"BUTTON", L"Remove",
-            WS_CHILD | WS_VISIBLE,
-            85, 170, 60, 25, hwnd, (HMENU)REMOVE_WEB_BUTTON, g_hInstance, NULL);
-
-        // Start Button
+        //Start Button
         CreateWindowEx(0, L"BUTTON", L"START",
             WS_CHILD | WS_VISIBLE,
             10, 230, 100, 35, hwnd, (HMENU)START_BUTTON, g_hInstance, NULL);
+
+        //Timer Set
+        CreateWindowEx(0, L"BUTTON", L"Timer Settings",
+            WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+            270, 10, 250, 100, hwnd, 0, g_hInstance, NULL);
 
         break;
     }
@@ -124,20 +114,23 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND: {
         switch (LOWORD(wParam)) {
         case START_BUTTON:
-            MessageBox(hwnd, L"Start button clicked", L"Info", MB_OK);
+        {
+            system("sc start AttentionService");
+            MessageBox(hwnd, L"Blocking has started.", L"Info", MB_OK);
             break;
-        case ADD_PROCESS_BUTTON:
-            MessageBox(hwnd, L"Add Process clicked", L"Info", MB_OK);
+        }
+        case EDIT_WEB_BUTTON:
+        {
+            ShellExecute(NULL, L"open", L"notepad.exe", L"C:\\ProgramData\\AttentionService\\host_file_edit.txt", NULL, SW_SHOW);
+            MessageBox(hwnd, L"Edit Web Block clicked", L"Info", MB_OK);
             break;
-        case REMOVE_PROCESS_BUTTON:
-            MessageBox(hwnd, L"Remove Process clicked", L"Info", MB_OK);
+        }
+        case EDIT_PROCESS_BUTTON:
+        {
+            ShellExecute(NULL, L"open",L"notepad.exe", L"C:\\ProgramData\\AttentionService\\process_blocklist.txt", NULL, SW_SHOW);
+            MessageBox(hwnd, L"Edit Process Block clicked", L"Info", MB_OK);
             break;
-        case ADD_WEB_BUTTON:
-            MessageBox(hwnd, L"Add Web clicked", L"Info", MB_OK);
-            break;
-        case REMOVE_WEB_BUTTON:
-            MessageBox(hwnd, L"Remove Web clicked", L"Info", MB_OK);
-            break;
+        }
         }
         break;
     }

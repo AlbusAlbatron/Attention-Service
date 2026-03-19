@@ -182,11 +182,6 @@ DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 		fwprintf(logFile, L"Initialised process blocklist.\n");
 	}
 
-	add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
-	if (logFile) {
-		fwprintf(logFile, L"Added blocklist_entry.\n");
-	}
-
 	start_block(&process_blocklist_array, &process_count);
 
 

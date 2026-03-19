@@ -395,6 +395,10 @@ int restore_hostfile(void) {
 PROGRAM BLOCKER SECTION
 */
 int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* process_count) {
+	//If changing the preset blocked processes make sure to change the preset count aswell
+	const wchar_t* security_preset[] = { L"cmd.exe", L"powershell.exe", L"mmc.exe" , L"taskmgr.exe"};
+	const int preset_count = 4;
+
 	FILE* fp;
 	wchar_t buffer[BUFFER_SIZE] = { 0 };
 
@@ -405,8 +409,8 @@ int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* 
 		return 1;
 	}
 
+
 	while (fgetws(buffer, (BUFFER_SIZE - 1), fp)) {
-		//Remove newline from buffer
 		size_t buffer_len = wcslen(buffer);
 
 		//Remove newline from buffer
@@ -428,6 +432,20 @@ int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* 
 		if ((*process_blocklist_array)[*process_count - 1] != 0) {
 			wcscpy_s((*process_blocklist_array)[*process_count - 1], BUFFER_SIZE, buffer);
 		}
+	}
+
+	//Add possible processes that could end the service to the end of the array
+	wchar_t** tempptr = realloc(*process_blocklist_array, ((*process_count + preset_count) * sizeof(wchar_t*)));
+	if (tempptr == NULL) {
+		wprintf(L"intialise_process_blocklist_array: Reallocation failed\n");
+		return 1;
+	}
+	else {
+		*process_blocklist_array = tempptr;
+	}
+
+	for (int i = 0; i < preset_count; i++) {
+		(*process_blocklist_array)[(*process_count)++] = _wcsdup(security_preset[i]);
 	}
 
 	fclose(fp);
@@ -460,13 +478,29 @@ int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blockl
 
 	(*process_blocklist_array)[*process_count - 1] = malloc((process_name_len * sizeof(wchar_t)));
 	if ((*process_blocklist_array)[*process_count - 1] != 0) {
-		wcscpy_s((*process_blocklist_array)[*process_count - 1], process_name_len + 1, process_name); //add one to name len for endline symbol \0 or else buffer is overrun
+		wcscpy_s((*process_blocklist_array)[*process_count - 1], process_name_len + 1, process_name);
 	}
 
 	for (int i = 0; i < *process_count; i++) {
 		wprintf(L"%s\n", (*process_blocklist_array)[i]);
 	}
 
+	return 0;
+}
+
+int add_process_blocklist_entry_fileonly(wchar_t* process_name) {
+	//Doesn't work right now!!
+	FILE* fp;
+	size_t process_name_len = wcslen(process_name);
+
+	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"a");
+	if (err != 0 || fp == NULL) {
+		wprintf(L"add_process_blocklist_entry: Failed to open process_blocklist.txt\n");
+		return 1;
+	}
+	fputwc(L'\n', fp);
+	fputws(process_name, fp);
+	fclose(fp);
 	return 0;
 }
 
@@ -507,6 +541,25 @@ int remove_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blo
 	
 	return 0;
 	
+}
+
+int remove_process_blocklist_entry_fileonly(wchar_t* process_name, wchar_t*** process_blocklist_array, int* process_count) {
+	//Remove found process from process_blocklist file
+	FILE* fp;
+	errno_t err = _wfopen_s(&fp, PROCESS_BLOCKLIST, L"w");
+	if (err != 0 || fp == NULL) {
+		wprintf(L"remove_process_blocklist_entry: Failed to open process blocklist\n");
+		return 1;
+	}
+
+	for (int i = 0; i < *process_count; i++) {
+		fwprintf_s(fp, L"%s\n", (*process_blocklist_array)[i]);
+	}
+
+	fclose(fp);
+
+	return 0;
+
 }
 
 int check_process_list(wchar_t*** process_blocklist, int* process_count) {
@@ -649,7 +702,7 @@ int main(void) {
 	wprintf(L"\n");
 
 	/*
-	add_process_blocklist_entry(L"sigma.exe", &process_blocklist_array, &process_count);
+	add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
 
 	wprintf(L"After addition\n");
 	for (int i = 0; i < process_count; i++) {

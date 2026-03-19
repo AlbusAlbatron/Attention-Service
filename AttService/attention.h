@@ -30,6 +30,7 @@ __declspec(dllexport)int remove_whitespace(const wchar_t* src, wchar_t* dst);
 __declspec(dllexport)int restore_hostfile(void);
 __declspec(dllexport)int start_block(wchar_t*** process_blocklist, int* process_count);
 __declspec(dllexport)int update_hostfile(void);
-
+__declspec(dllexport)int add_process_blocklist_entry_fileonly(wchar_t* process_name);
+__declspec(dllexport)int remove_process_blocklist_entry_fileonly(wchar_t* process_name);
 
 #endif

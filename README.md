@@ -10,7 +10,7 @@ This is for poeple like myself who love to do nothing more than procrastinate.
 - Locksdown system to prevent the block from being stoppped
 
 ## ⬇️ Installation
-1. Download the AttentionService-vX.X from the latest release
+1. Download the AttentionService-vX.X from the latest release.
 2. Unzip and run AttentionGUI.exe as administrator.
 3. For further details read <i>installguide.txt</i> after downloading the zip.
 

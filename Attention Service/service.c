@@ -232,7 +232,7 @@ int remove_web_blocklist_entry(const wchar_t* domain) {
 		_chsize_s(_fileno(tfp), ftell(tfp) - 10);
 	}
 	fclose(tfp);
-	I CANT GET IT TO FUCKING STOP PRINTING THE LAST NEW LINENNENENENENOIUNIURGNIEGNBUIREHBGUIERHBGNODFHBGOIFDUBNGIODSFHBGIUODFBNGIDFGIUFDBGNIPUB*/
+	I CANT GET IT TO STOP PRINTING THE LAST NEW LINENNENENENENOIUNIURGNIEGNBUIREHBGUIERHBGNODFHBGOIFDUBNGIODSFHBGIUODFBNGIDFGIUFDBGNIPUB*/
 	
 
 	if (ferror(tfp) != 0) {
@@ -395,9 +395,10 @@ int restore_hostfile(void) {
 PROGRAM BLOCKER SECTION
 */
 int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* process_count) {
-	//If changing the preset blocked processes make sure to change the preset count aswell
-	const wchar_t* security_preset[] = { L"cmd.exe", L"powershell.exe", L"mmc.exe" , L"taskmgr.exe"};
-	const int preset_count = 4;
+	//If changing the preset blocked processes make sure to change the preset count aswell !!
+	//security_preset is the processes that a user could use to disable the service. Maybe leave atleast 1 way of disabling the service like regedit or something just incase
+	const wchar_t* security_preset[] = { L"cmd.exe", L"powershell.exe", L"mmc.exe" , L"taskmgr.exe", L"regedit.exe"};
+	const int preset_count = 5;
 
 	FILE* fp;
 	wchar_t buffer[BUFFER_SIZE] = { 0 };
@@ -599,7 +600,7 @@ int check_process_list(wchar_t*** process_blocklist, int* process_count) {
 		if (already_blocked != 1) {
 			for (int i = 0; i < *process_count; i++) {
 				if (_wcsicmp((*process_blocklist)[i], pe32.szExeFile) == 0) {
-					int block_result = block_program(&pe32); // If returns -1 that means process is closed already
+					int block_result = block_program(&pe32);
 					if (block_result == 0) {
 						blocked_pids[blocked_pids_count] = pe32.th32ParentProcessID;
 						blocked_pids_count++;

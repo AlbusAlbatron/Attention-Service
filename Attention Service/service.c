@@ -683,46 +683,6 @@ int start_block(wchar_t*** process_blocklist, int* process_count) {
 	restore_hostfile();
 
 	return 0;
-} 
-
-int main(void) {
-	//Initialise process blocklist
-	wchar_t** process_blocklist_array = NULL;
-	int process_count = 0;
-
-	create_required_files();
-
-
-	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
-
-	wprintf(L"Original array\n");
-	for (int i = 0; i < process_count; i++) {
-		wprintf(L"%s, ", process_blocklist_array[i]);
-
-	}
-	wprintf(L"\n");
-
-	/*
-	add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
-
-	wprintf(L"After addition\n");
-	for (int i = 0; i < process_count; i++) {
-		wprintf(L"%s, ", process_blocklist_array[i]);
-
-	}
-	wprintf(L"\n");
-	*/
-
-	remove_process_blocklist_entry(L"6th", &process_blocklist_array, &process_count);
-
-	wprintf(L"After removal\n");
-	for (int i = 0; i < process_count; i++) {
-		wprintf(L"%s, ", process_blocklist_array[i]);
-
-	}
-	wprintf(L"\n");
-
-	return 0;
 }
 
 //Sample main() for reference later

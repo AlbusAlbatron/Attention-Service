@@ -14,5 +14,5 @@ This is for poeple like myself who love to do nothing more than procrastinate.
 2. Unzip and run AttentionGUI.exe as administrator.
 3. For further details read <i>installguide.txt</i> after downloading the zip.
 
-*This program only works on Windows machines and has only been tested on Windows11*
+*This program only works on Windows machines and has only been tested on Windows11* <br>
 *To uninstall the windows service from your machine run <b>sc delete AttentionService</b> in a Command Prompt with admin privileges* 

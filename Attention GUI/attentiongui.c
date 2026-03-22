@@ -181,19 +181,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                     SetWindowText(GetDlgItem(hwnd, TIME_LEFT_TEXT), minutes_remaining);
 
-                    break;
                     MessageBox(NULL, L"Service started!", L"Success", MB_OK);
                 }
-                else {
-                    DWORD error = GetLastError();
-                    if (error == ERROR_SERVICE_ALREADY_RUNNING) {
-                        MessageBox(NULL, L"Service is already running", L"Info", MB_OK);
-                    }
-                    else {
-                        MessageBox(NULL, L"Failed to start service", L"Error", MB_OK);
-                    }
-                }
                 CloseServiceHandle(hService);
+            }
+            else {
+                DWORD error = GetLastError();
+                if (error == ERROR_SERVICE_ALREADY_RUNNING) {
+                    MessageBox(NULL, L"Service is already running", L"Info", MB_OK);
+                }
+                else if (error == ERROR_SERVICE_DOES_NOT_EXIST) {
+                    MessageBox(NULL, L"Service is not installed. Please press install service.", L"Error", MB_OK);
+                }
+                else {
+                    MessageBox(NULL, L"Failed to start service", L"Error", MB_OK);
+                }
             }
             CloseServiceHandle(hSCManager);
             
@@ -202,21 +204,34 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         case EDIT_WEB_BUTTON:
         {
+            //Check that files exist
+            create_required_files();
+
             ShellExecute(NULL, L"open", L"notepad.exe", L"C:\\ProgramData\\AttentionService\\host_file_edit.txt", NULL, SW_SHOW);
             break;
         }
         case EDIT_PROCESS_BUTTON:
         {
+            //Check that files exist
+            create_required_files();
+
             ShellExecute(NULL, L"open",L"notepad.exe", L"C:\\ProgramData\\AttentionService\\process_blocklist.txt", NULL, SW_SHOW);
             break;
         }
         case TIMER_EDIT_BUTTON:
         {
+            //Check that files exist
+            create_required_files();
+
             ShellExecute(NULL, L"open", L"notepad.exe", L"C:\\ProgramData\\AttentionService\\cfg.txt", NULL, SW_SHOW);
+            break;
         }
 
         case CREATE_SERVICE_BUTTON:
         {
+            //Create programdata files
+            create_required_files();
+
             //Get path of gui exe
             wchar_t exePath[MAX_PATH];
             wchar_t servicePath[MAX_PATH];

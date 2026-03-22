@@ -15,12 +15,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="attentiongui.c">
+    <ClCompile Include="AttService.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Attention Service\attention.h">
+    <ClInclude Include="attention.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

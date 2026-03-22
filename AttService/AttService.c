@@ -1,0 +1,199 @@
+#ifndef UNICODE
+#define UNICODE
+#endif
+
+#ifndef _UNICODE
+#define _UNICODE
+#endif
+
+#include "attention.h"
+#include <Windows.h>
+#include <stdio.h>
+
+
+//Globals and Function Declarations
+SERVICE_STATUS g_ServiceStatus = { 0 };
+SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
+HANDLE g_ServiceStopEvent = INVALID_HANDLE_VALUE;
+
+VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv);
+VOID WINAPI ServiceCtrlHandler(DWORD);
+DWORD WINAPI ServiceWorkerThread(LPVOID lpParam);
+
+#define SERVICE_NAME TEXT("AttentionService")
+#define SERVICE_DISPLAY_NAME TEXT("Attention Service")
+
+//Main Entry Point
+int wmain(int argc, WCHAR* argv[])
+{
+	SERVICE_TABLE_ENTRY ServiceTable[] =
+	{
+		{(LPWSTR)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+		{NULL, NULL}
+	};
+
+	if (StartServiceCtrlDispatcher(ServiceTable) == FALSE)
+	{
+		return GetLastError();
+	}
+
+	return 0;
+}
+
+VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
+{
+	DWORD Status = E_FAIL;
+
+	//Register our service control handler with the SCM
+	g_StatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
+
+	if (g_StatusHandle == NULL)
+	{
+		goto EXIT;
+	}
+
+	//Tell the service controller we are starting
+	ZeroMemory(&g_ServiceStatus, sizeof(g_ServiceStatus));
+	g_ServiceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+	g_ServiceStatus.dwControlsAccepted = 0;
+	g_ServiceStatus.dwCurrentState = SERVICE_START_PENDING;
+	g_ServiceStatus.dwWin32ExitCode = 0;
+	g_ServiceStatus.dwServiceSpecificExitCode = 0;
+	g_ServiceStatus.dwCheckPoint = 0;
+	
+	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
+	{
+		OutputDebugString(L"Attention Service: ServiceMain: SetServiceStatus returned error");
+	}
+
+	/*
+	Perform tasks necessary to start the service here
+	*/
+	//Create program data folder and files
+	create_required_files();
+
+	//Create a service stop event to wait on later
+	g_ServiceStopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (g_ServiceStopEvent == NULL)
+	{
+		//Error creating event
+		//Tell service controller we are stopped and exit
+		g_ServiceStatus.dwControlsAccepted = 0;
+		g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
+		g_ServiceStatus.dwWin32ExitCode = GetLastError();
+		g_ServiceStatus.dwCheckPoint = 1;
+
+		if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
+		{
+			OutputDebugString(L"Attention Service: ServiceMain: SetServiceStatus returned error");
+		}
+		goto EXIT;
+	}
+
+	//Tell the service controller we are started
+	g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+	g_ServiceStatus.dwCurrentState = SERVICE_RUNNING;
+	g_ServiceStatus.dwWin32ExitCode = 0;
+	g_ServiceStatus.dwCheckPoint = 0;
+
+	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
+	{
+		OutputDebugString(L"Attention Service: ServiceMain: SetServiceStatus returned error");
+	}
+
+	//Start a thread that will perform the main task of the service
+	HANDLE hThread = CreateThread(NULL, 0, ServiceWorkerThread, NULL, 0, NULL);
+
+	//Wait until our worker thread exits signaling that the service needs to stop
+	WaitForSingleObject(hThread, INFINITE);
+
+	/*
+	Perform any cleanup tasks
+	*/
+
+	CloseHandle(g_ServiceStopEvent);
+
+	//Tell the service that we are stopped
+	g_ServiceStatus.dwControlsAccepted = 0;
+	g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
+	g_ServiceStatus.dwWin32ExitCode = 0;
+	g_ServiceStatus.dwCheckPoint = 3;
+
+	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
+	{
+		OutputDebugString(L"Attention Service: ServiceMain: SetServiceStatus returned error");
+	}
+
+EXIT:
+	return;
+}
+
+
+//Service Control Handler
+VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
+{
+	switch (CtrlCode)
+	{
+	case SERVICE_CONTROL_STOP :
+
+		if (g_ServiceStatus.dwCurrentState != SERVICE_RUNNING)
+			break;
+
+		/*
+		Perform tasks necessary to stop the service here
+		*/
+
+		g_ServiceStatus.dwControlsAccepted = 0;
+		g_ServiceStatus.dwCurrentState = SERVICE_STOP_PENDING;
+		g_ServiceStatus.dwWin32ExitCode = 0;
+		g_ServiceStatus.dwCheckPoint = 4;
+
+		if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
+		{
+			OutputDebugString(L"Attention Service: ServiceCtrlHandler: SetServiceStatus returned error");
+		}
+
+		//This will signal the worker thread to start shutting down
+		SetEvent(g_ServiceStopEvent);
+
+		break;
+
+	default:
+		break;
+	}
+}
+
+//Service Worker Thread
+DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
+{
+	//Initialise variables
+	wchar_t** process_blocklist_array = NULL;
+	int process_count = 0;
+
+	//Open log file
+	FILE* logFile = fopen("C:\\ProgramData\\AttentionService\\service.log", "a");
+	if (logFile) {
+		fwprintf(logFile, L"Service starting.\n");
+		fflush(logFile);
+	}
+
+	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
+	if (logFile) {
+		fwprintf(logFile, L"Initialised process blocklist.\n");
+	}
+
+	start_block(&process_blocklist_array, &process_count);
+
+
+	SetEvent(g_ServiceStopEvent);
+	if (logFile) {
+		fwprintf(logFile, L"Service Stopping.\n \n");
+	}
+	
+	if (logFile) {
+		fclose(logFile);
+	}
+	return ERROR_SUCCESS;
+}
+
+

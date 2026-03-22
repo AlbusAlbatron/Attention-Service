@@ -6,36 +6,43 @@
 #define _UNICODE
 #endif
 
-// Menu handle codes
+//Menu handle codes
 #define START_BUTTON 600
 
-#define PROCESS_INPUT_AREA 601
-#define ADD_PROCESS_BUTTON 602
-#define REMOVE_PROCESS_BUTTON 603
+#define EDIT_PROCESS_BUTTON 601
 
-#define WEB_INPUT_AREA 604
-#define ADD_WEB_BUTTON 605
-#define REMOVE_WEB_BUTTON 606
+#define EDIT_WEB_BUTTON 602
 
-#define TIMER_SET_INPUT 607
-#define TIMER_SET_BUTTON 608
+#define TIMER_EDIT_BUTTON 603
 
+#define CREATE_SERVICE_BUTTON 604
+
+#define SERVICE_STATUS_TEXT 605
+
+#define TIME_LEFT_TEXT 606
+
+#include "attention.h"
 #include <stdio.h>
 #include <windows.h>
 #include <wchar.h>
 
 HINSTANCE g_hInstance;
 
+//Time left on service
+int g_timerRemaining = 0;
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-    const wchar_t CLASS_NAME[] = L"Attention_Service2";
+    const wchar_t CLASS_NAME[] = L"Attention_Service";
+
 
     WNDCLASS wc = { 0 };
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
     g_hInstance = hInstance;
 
@@ -46,7 +53,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine,
         CLASS_NAME,
         L"Attention Service",
         WS_OVERLAPPEDWINDOW,
-        100, 100, 900, 700,
+        100, 100, 300, 400,
         NULL,
         NULL,
         hInstance,
@@ -70,53 +77,88 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine,
     return 0;
 }
 
+int timer_check(int* timer) {
+    wchar_t buffer[BUFFER_SIZE];
+    FILE* fp = _wfopen(ATTENTION_SERVICE_CONFIG, L"r");
+
+    //Get time in minutes from config file
+    while (fgetws(buffer, BUFFER_SIZE, fp)) {
+        if (wcsstr(buffer, L"timer_minutes=")) {
+            swscanf_s(buffer, L"timer_minutes=%d", timer);
+        }
+    }
+
+    return 0;
+
+}
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
     case WM_DESTROY:
+        KillTimer(hwnd, 1);
+        KillTimer(hwnd, 2);
         PostQuitMessage(0);
         return 0;
 
     case WM_CREATE: {
-        // Process Block
-        CreateWindowEx(0, L"BUTTON", L"Process Settings",
-            WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
-            10, 10, 250, 100, hwnd, 0, g_hInstance, NULL);
+        //Set timer to check service status every 2 seconds
+        SetTimer(hwnd, 1, 2000, NULL);
 
-        CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            20, 35, 150, 20, hwnd, (HMENU)PROCESS_INPUT_AREA, g_hInstance, NULL);
-
-        CreateWindowEx(0, L"BUTTON", L"Add",
+        //Service status text
+        CreateWindowEx(0, L"STATIC", L"Status: Stopped",
             WS_CHILD | WS_VISIBLE,
-            20, 60, 60, 25, hwnd, (HMENU)ADD_PROCESS_BUTTON, g_hInstance, NULL);
+            20, 300, 150, 18, hwnd, (HMENU)SERVICE_STATUS_TEXT, g_hInstance, NULL);
 
-        CreateWindowEx(0, L"BUTTON", L"Remove",
+        //Process Block
+        CreateWindowEx(0, L"BUTTON", L"Edit Process Blocklist",
             WS_CHILD | WS_VISIBLE,
-            85, 60, 60, 25, hwnd, (HMENU)REMOVE_PROCESS_BUTTON, g_hInstance, NULL);
+            20, 35, 150, 50, hwnd, (HMENU)EDIT_PROCESS_BUTTON, g_hInstance, NULL);
 
-        // Web Block
-        CreateWindowEx(0, L"BUTTON", L"Web Settings",
-            WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
-            10, 120, 250, 100, hwnd, 0, g_hInstance, NULL);
-
-        CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            20, 145, 150, 20, hwnd, (HMENU)WEB_INPUT_AREA, g_hInstance, NULL);
-
-        CreateWindowEx(0, L"BUTTON", L"Add",
+        //Web Block
+        CreateWindowEx(0, L"BUTTON", L"Edit Web Blocklist",
             WS_CHILD | WS_VISIBLE,
-            20, 170, 60, 25, hwnd, (HMENU)ADD_WEB_BUTTON, g_hInstance, NULL);
+            20, 95, 150, 50, hwnd, (HMENU)EDIT_WEB_BUTTON, g_hInstance, NULL);
 
-        CreateWindowEx(0, L"BUTTON", L"Remove",
+        //Start Button
+        CreateWindowEx(0, L"BUTTON", L"START BLOCK",
             WS_CHILD | WS_VISIBLE,
-            85, 170, 60, 25, hwnd, (HMENU)REMOVE_WEB_BUTTON, g_hInstance, NULL);
+            20, 230, 200, 50, hwnd, (HMENU)START_BUTTON, g_hInstance, NULL);
 
-        // Start Button
-        CreateWindowEx(0, L"BUTTON", L"START",
+        //Timer Set
+        CreateWindowEx(0, L"BUTTON", L"Edit Timer",
             WS_CHILD | WS_VISIBLE,
-            10, 230, 100, 35, hwnd, (HMENU)START_BUTTON, g_hInstance, NULL);
+            20, 155, 150, 50, hwnd, (HMENU)TIMER_EDIT_BUTTON, g_hInstance, NULL);
+
+        //Create windows service
+        CreateWindowEx(0, L"BUTTON", L"Install Service",
+            WS_CHILD | WS_VISIBLE,
+            0, 0, 100, 20, hwnd, (HMENU)CREATE_SERVICE_BUTTON, g_hInstance, NULL);
+
+        //Time left
+        CreateWindowEx(0, L"STATIC", L"Minutes Remaining: --",
+            WS_CHILD | WS_VISIBLE,
+            20, 320, 150, 18, hwnd, (HMENU)TIME_LEFT_TEXT, g_hInstance, NULL);
+
+        //Check if service is running or stopped
+        SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
+        SC_HANDLE hService = OpenService(hSCManager, L"AttentionService", SERVICE_QUERY_STATUS);
+
+        if (hService) {
+            SERVICE_STATUS service_status;
+            if (QueryServiceStatus(hService, &service_status)) {
+                if (service_status.dwCurrentState == SERVICE_RUNNING) {
+                    SetWindowText(GetDlgItem(hwnd, SERVICE_STATUS_TEXT), L"Status: Running");
+                }
+                else if (service_status.dwCurrentState == SERVICE_STOPPED) {
+                    SetWindowText(GetDlgItem(hwnd, SERVICE_STATUS_TEXT), L"Status: Stopped");
+                }
+            }
+            CloseServiceHandle(hService);
+        }
+        CloseServiceHandle(hSCManager);
+
 
         break;
     }
@@ -124,23 +166,172 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND: {
         switch (LOWORD(wParam)) {
         case START_BUTTON:
-            MessageBox(hwnd, L"Start button clicked", L"Info", MB_OK);
+        {
+            //Check if service is running or stopped
+            SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
+            SC_HANDLE hService = OpenService(hSCManager, L"AttentionService", SERVICE_START);
+            if (hService) {
+                if (StartService(hService, 0, NULL)) {
+                    timer_check(&g_timerRemaining);
+
+                    SetTimer(hwnd, 2, 60000, NULL);
+
+                    wchar_t minutes_remaining[256];
+                    swprintf(minutes_remaining, 256, L"Minutes Remaining: %d", g_timerRemaining);
+
+                    SetWindowText(GetDlgItem(hwnd, TIME_LEFT_TEXT), minutes_remaining);
+
+                    break;
+                    MessageBox(NULL, L"Service started!", L"Success", MB_OK);
+                }
+                else {
+                    DWORD error = GetLastError();
+                    if (error == ERROR_SERVICE_ALREADY_RUNNING) {
+                        MessageBox(NULL, L"Service is already running", L"Info", MB_OK);
+                    }
+                    else {
+                        MessageBox(NULL, L"Failed to start service", L"Error", MB_OK);
+                    }
+                }
+                CloseServiceHandle(hService);
+            }
+            CloseServiceHandle(hSCManager);
+            
             break;
-        case ADD_PROCESS_BUTTON:
-            MessageBox(hwnd, L"Add Process clicked", L"Info", MB_OK);
+        }
+
+        case EDIT_WEB_BUTTON:
+        {
+            ShellExecute(NULL, L"open", L"notepad.exe", L"C:\\ProgramData\\AttentionService\\host_file_edit.txt", NULL, SW_SHOW);
             break;
-        case REMOVE_PROCESS_BUTTON:
-            MessageBox(hwnd, L"Remove Process clicked", L"Info", MB_OK);
+        }
+        case EDIT_PROCESS_BUTTON:
+        {
+            ShellExecute(NULL, L"open",L"notepad.exe", L"C:\\ProgramData\\AttentionService\\process_blocklist.txt", NULL, SW_SHOW);
             break;
-        case ADD_WEB_BUTTON:
-            MessageBox(hwnd, L"Add Web clicked", L"Info", MB_OK);
+        }
+        case TIMER_EDIT_BUTTON:
+        {
+            ShellExecute(NULL, L"open", L"notepad.exe", L"C:\\ProgramData\\AttentionService\\cfg.txt", NULL, SW_SHOW);
+        }
+
+        case CREATE_SERVICE_BUTTON:
+        {
+            //Get path of gui exe
+            wchar_t exePath[MAX_PATH];
+            wchar_t servicePath[MAX_PATH];
+
+            GetModuleFileName(NULL, exePath, MAX_PATH);
+
+            //Remove the gui exe and just have folder path
+            wchar_t* lastSlash = wcsrchr(exePath, L'\\');
+            if (lastSlash) {
+                *lastSlash = L'\0';
+            }
+
+            // Build path to service exe
+            swprintf(servicePath, MAX_PATH, L"%s\\AttService.exe", exePath);
+
+            SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
+            SC_HANDLE hService = CreateService(
+                hSCManager,
+                L"AttentionService",
+                L"Attention Service",
+                SERVICE_ALL_ACCESS,
+                SERVICE_WIN32_OWN_PROCESS,
+                SERVICE_DEMAND_START,
+                SERVICE_ERROR_NORMAL,
+                servicePath,
+                NULL, NULL, NULL, NULL, NULL);
+
+            if (hService == NULL) {
+                DWORD error = GetLastError();
+
+                if (error == ERROR_SERVICE_EXISTS) {
+                    MessageBox(NULL, L"Service already exists.", L"Error", MB_OK);
+                }
+                else if (error == ERROR_ACCESS_DENIED) {
+                    MessageBox(NULL, L"Administrator privileges required to install the service.", L"Error", MB_OK);
+                }
+                else {
+                    MessageBox(NULL, L"Failed to install service.", L"Error", MB_OK);
+                }
+            }
+            else {
+                MessageBox(NULL, L"Service has been installed.", L"Success", MB_OK);
+            }
+
+            CloseServiceHandle(hService);
+            CloseServiceHandle(hSCManager);
+
             break;
-        case REMOVE_WEB_BUTTON:
-            MessageBox(hwnd, L"Remove Web clicked", L"Info", MB_OK);
-            break;
+        }
+
         }
         break;
     }
+
+    case WM_PAINT:
+    {
+        HDC hdc;
+        PAINTSTRUCT ps;
+
+        hdc = BeginPaint(hwnd, &ps);
+        EndPaint(hwnd, &ps);
+        break;
+    }
+    case WM_SIZE:
+    {
+        HDC hdc;
+        PAINTSTRUCT ps;
+        hdc = BeginPaint(hwnd, &ps);
+        EndPaint(hwnd, &ps);
+        break;
+    }
+    case WM_TIMER:
+    {
+        switch (wParam) {
+            //Check if service is running or is stopped
+            case 1:
+            {
+                SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
+                SC_HANDLE hService = OpenService(hSCManager, L"AttentionService", SERVICE_QUERY_STATUS);
+
+                if (hService) {
+                    SERVICE_STATUS service_status;
+                    if (QueryServiceStatus(hService, &service_status)) {
+                        if (service_status.dwCurrentState == SERVICE_RUNNING) {
+                            SetWindowText(GetDlgItem(hwnd, SERVICE_STATUS_TEXT), L"Status: Running");
+                        }
+                        else if (service_status.dwCurrentState == SERVICE_STOPPED) {
+                            SetWindowText(GetDlgItem(hwnd, SERVICE_STATUS_TEXT), L"Status: Stopped");
+                        }
+                    }
+                    CloseServiceHandle(hService);
+                }
+                CloseServiceHandle(hSCManager);
+                break;
+            }
+            //Check and update time left on service
+            case 2:
+            {
+                g_timerRemaining--;
+
+                if (g_timerRemaining <= 0) {
+                    SetWindowText(GetDlgItem(hwnd, TIME_LEFT_TEXT), L"Minutes Remaining: --");
+                    KillTimer(hwnd, 2);
+                    break;
+                }
+
+                wchar_t minutes_remaining[256];
+                swprintf(minutes_remaining, 256, L"Minutes Remaining: %d", g_timerRemaining);
+
+                SetWindowText(GetDlgItem(hwnd, TIME_LEFT_TEXT), minutes_remaining);
+                break;
+            }
+        }
+    }
+
 
     default:
         return DefWindowProc(hwnd, uMsg, wParam, lParam);

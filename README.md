@@ -12,6 +12,7 @@ This is for poeple like myself who love to do nothing more than procrastinate.
 ## ⬇️ Installation
 1. Download the AttentionService-vX.X from the latest release
 2. Unzip and run AttentionGUI.exe as administrator.
+3. For further details read <i>installguide.txt</i> after downloading the zip.
 
 *This program only works on Windows machines and has only been tested on Windows11*
-*To uninstall the windows service from your machine <b>run >sc delete AttentionService</b> in a Command Prompt with admin privileges* 
+*To uninstall the windows service from your machine run <b>>sc delete AttentionService</b> in a Command Prompt with admin privileges* 

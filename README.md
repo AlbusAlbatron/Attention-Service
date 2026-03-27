@@ -1,5 +1,6 @@
 ##!!NOTE!!
-As of v1.1 if the service ends prematurely either intentionally or from a crash. User must go to *C:\Windows\System32\drivers\etc\hosts* and manually remove the Attention Service entries.
+As of v1.1 if the service ends prematurely either intentionally or from a crash. User must go to 
+*C:\Windows\System32\drivers\etc\hosts* and manually remove the Attention Service entries.
 
 ## ℹ️ Overview
 Attention Service is a program that utilises Windows Services to create a web and program blocker to rid your device of all distractions.

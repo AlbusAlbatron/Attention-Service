@@ -10,6 +10,8 @@
 #include <Windows.h>
 #include <stdio.h>
 
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
 
 //Globals and Function Declarations
 SERVICE_STATUS g_ServiceStatus = { 0 };
@@ -110,6 +112,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	/*
 	Perform any cleanup tasks
 	*/
+	//_CrtDumpMemoryLeaks();
 
 	CloseHandle(g_ServiceStopEvent);
 
@@ -181,8 +184,14 @@ DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 	if (logFile) {
 		fwprintf(logFile, L"Initialised process blocklist.\n");
 	}
-
+	//Start blocker
 	start_block(&process_blocklist_array, &process_count);
+
+	//Free process blocklist array
+	for (int i = 0; i < process_count; i++) {
+		free(process_blocklist_array[i]);
+	}
+	free(process_blocklist_array);
 
 
 	SetEvent(g_ServiceStopEvent);

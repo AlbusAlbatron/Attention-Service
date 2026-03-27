@@ -18,6 +18,9 @@
 #include <time.h>
 
 
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+
 #define HOSTFILE "C:\\Windows\\System32\\drivers\\etc\\hosts"
 #define HOSTFILE_EDIT L"C:\\ProgramData\\AttentionService\\host_file_edit.txt"
 #define TEMP_HOSTFILE_EDIT L"C:\\ProgramData\\AttentionService\\temp_blocklist.txt"
@@ -397,7 +400,7 @@ PROGRAM BLOCKER SECTION
 int initialise_process_blocklist_array(wchar_t*** process_blocklist_array, int* process_count) {
 	//If changing the preset blocked processes make sure to change the preset count aswell !!
 	//security_preset is the processes that a user could use to disable the service. Maybe leave atleast 1 way of disabling the service like regedit or something just incase
-	const wchar_t* security_preset[] = { L"cmd.exe", L"powershell.exe", L"mmc.exe" , L"taskmgr.exe", L"regedit.exe"};
+	const wchar_t* security_preset[] = { L"cmd.exe", L"powershell.exe", L"mmc.exe", L"taskmgr.exe", L"regedit.exe"};
 	const int preset_count = 5;
 
 	FILE* fp;
@@ -477,7 +480,7 @@ int add_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blockl
 		*process_blocklist_array = tempptr;
 	}
 
-	(*process_blocklist_array)[*process_count - 1] = malloc((process_name_len * sizeof(wchar_t)));
+	(*process_blocklist_array)[*process_count - 1] = malloc((process_name_len + 1) * sizeof(wchar_t));
 	if ((*process_blocklist_array)[*process_count - 1] != 0) {
 		wcscpy_s((*process_blocklist_array)[*process_count - 1], process_name_len + 1, process_name);
 	}
@@ -511,6 +514,7 @@ int remove_process_blocklist_entry(wchar_t* process_name, wchar_t*** process_blo
 	//Look for and remove process from array
 	for (int i = 0; i < *process_count; i++) {
 		if (lstrcmpiW((*process_blocklist_array)[i], process_name) == 0) {
+			free((*process_blocklist_array)[i]);
 			for (int j = i; j < *process_count - 1; j++) {
 				(*process_blocklist_array)[j] = (*process_blocklist_array)[j + 1];
 			}
@@ -614,6 +618,8 @@ int check_process_list(wchar_t*** process_blocklist, int* process_count) {
 
 	} while (Process32Next(hProcessSnap, &pe32));
 	
+	//Free the handle
+	CloseHandle(hProcessSnap);
 	return 0;
 }
 
@@ -633,7 +639,7 @@ int block_program(PROCESSENTRY32* pe32) {
 		return 1;
 	}
 
-	//Terminate process and ignore the bloody fact that half the time it wont be able to terminate anything (:
+	//Terminate process and ignore all the times it tries to terminate something that doesn't exist (:
 	GetExitCodeProcess(hProcess_terminate, &dwExitCode);
 	TerminateProcess(hProcess_terminate, dwExitCode);
 
@@ -675,7 +681,7 @@ int start_block(wchar_t*** process_blocklist, int* process_count) {
 	update_hostfile();
 
 	//Run process blocker
-	while (time(NULL) != end_time) {
+	while (time(NULL) < end_time) {
 		check_process_list(process_blocklist, process_count);
 	}
 
@@ -685,29 +691,33 @@ int start_block(wchar_t*** process_blocklist, int* process_count) {
 	return 0;
 }
 
-//Sample main() for reference later
+//Sample main() for reference later and debugging
 /*
 int main(void) {
+	#ifdef _DEBUG
+		_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	#endif
+
 	//Initialise process blocklist
 	wchar_t** process_blocklist_array = NULL;
 	int process_count = 0;
 
 	create_required_files();
 
-
 	initialise_process_blocklist_array(&process_blocklist_array, &process_count);
-
-	//add_process_blocklist_entry(L"chrome.exe", &process_blocklist_array, &process_count);
 
 	start_block(&process_blocklist_array, &process_count);
 
-	//add_web_blocklist_entry(L"youtu.be");
-	//remove_web_blocklist_entry(L"idiot.com");
-	//update_hostfile();
-	//restore_hostfile();
-	//add_process_blocklist_entry(wscanf_s("%s", &count), )
 		
 	wprintf(L"Program succesfully ended\n");
+
+	for (int i = 0; i < process_count; i++) {
+		free(process_blocklist_array[i]);
+	}
+	free(process_blocklist_array);
+
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG); 
+    _CrtDumpMemoryLeaks();
 	return 0;
 }
 */

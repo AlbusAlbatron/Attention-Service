@@ -21,6 +21,9 @@
 
 #define TIME_LEFT_TEXT 606
 
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+
 #include "attention.h"
 #include <stdio.h>
 #include <windows.h>
@@ -97,6 +100,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
     case WM_DESTROY:
+        //_CrtDumpMemoryLeaks();
         KillTimer(hwnd, 1);
         KillTimer(hwnd, 2);
         PostQuitMessage(0);
@@ -170,8 +174,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             //Check if service is running or stopped
             SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
             SC_HANDLE hService = OpenService(hSCManager, L"AttentionService", SERVICE_START);
-            if (hService) {
-                if (StartService(hService, 0, NULL)) {
+            if (!hService) {
+                DWORD error = GetLastError();
+                if (error == ERROR_SERVICE_DOES_NOT_EXIST) {
+                    MessageBox(NULL, L"Service is not installed. Please press install service.", L"Error", MB_OK);
+                }
+                else {
+                    MessageBox(NULL, L"Failed to open service.", L"Error", MB_OK);
+                }
+            }
+            else {
+                if (!StartService(hService, 0, NULL)) {
+                    DWORD error = GetLastError();
+                    if (error == ERROR_SERVICE_ALREADY_RUNNING) {
+                        MessageBox(NULL, L"Service is already running", L"Info", MB_OK);
+                    }
+                    else {
+                        MessageBox(NULL, L"Failed to start service", L"Error", MB_OK);
+                    }
+                }
+                else {
                     timer_check(&g_timerRemaining);
 
                     SetTimer(hwnd, 2, 60000, NULL);
@@ -184,18 +206,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     MessageBox(NULL, L"Service started!", L"Success", MB_OK);
                 }
                 CloseServiceHandle(hService);
-            }
-            else {
-                DWORD error = GetLastError();
-                if (error == ERROR_SERVICE_ALREADY_RUNNING) {
-                    MessageBox(NULL, L"Service is already running", L"Info", MB_OK);
-                }
-                else if (error == ERROR_SERVICE_DOES_NOT_EXIST) {
-                    MessageBox(NULL, L"Service is not installed. Please press install service.", L"Error", MB_OK);
-                }
-                else {
-                    MessageBox(NULL, L"Failed to start service", L"Error", MB_OK);
-                }
             }
             CloseServiceHandle(hSCManager);
             

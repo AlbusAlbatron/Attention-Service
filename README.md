@@ -1,4 +1,4 @@
-##!!NOTE!!
+## !!NOTE!!
 As of v1.1 if the service ends prematurely either intentionally or from a crash. User must go to <br>
 *C:\Windows\System32\drivers\etc\hosts* and manually remove the Attention Service entries.
 
